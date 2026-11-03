@@ -1,8 +1,11 @@
 package com.avshy.bayitvoice.ui
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
@@ -25,6 +28,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,25 +81,31 @@ private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel,
         ) {
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
 
-            val connected = state.status is ConnectionStatus.Connected
+            val connected = state.isConnected
             Button(onClick = onOpenAssistant, enabled = connected, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.settings_open_assistant))
             }
 
             SectionTitle(R.string.settings_section_server)
-            OutlinedTextField(
-                value = state.url,
-                onValueChange = viewModel::onUrlChange,
-                label = { Text(stringResource(R.string.settings_url_label)) },
-                placeholder = { Text(stringResource(R.string.settings_url_hint)) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                modifier = Modifier.fillMaxWidth(),
+            UrlField(
+                value = state.homeUrl,
+                onChange = viewModel::onHomeUrlChange,
+                label = R.string.settings_home_url_label,
+                hint = R.string.settings_home_url_hint,
+                plainHttp = state.isHomePlainHttp,
+                status = state.homeStatus,
             )
-            if (state.isPlainHttp) {
-                Text(stringResource(R.string.settings_http_warning), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
-            }
+            UrlField(
+                value = state.externalUrl,
+                onChange = viewModel::onExternalUrlChange,
+                label = R.string.settings_external_url_label,
+                hint = R.string.settings_external_url_hint,
+                plainHttp = state.isExternalPlainHttp,
+                status = state.externalStatus,
+            )
+            Text(stringResource(R.string.settings_urls_help), style = MaterialTheme.typography.bodySmall)
+
+            HomeNetworks(state, viewModel)
 
             OutlinedTextField(
                 value = token,
@@ -117,13 +127,17 @@ private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel,
                         viewModel.testConnection(token)
                         token = ""
                     },
-                    enabled = state.status != ConnectionStatus.Testing,
+                    enabled = !state.isTesting,
                 ) { Text(stringResource(R.string.settings_test_connection)) }
                 if (state.hasSavedToken) {
                     OutlinedButton(onClick = viewModel::signOut) { Text(stringResource(R.string.settings_sign_out)) }
                 }
             }
-            ConnectionStatusText(state.status)
+            state.formError?.let { Text(errorText(it), color = MaterialTheme.colorScheme.error) }
+            val version = (state.homeStatus as? ConnectionStatus.Connected) ?: (state.externalStatus as? ConnectionStatus.Connected)
+            if (version != null && !version.supportsFollowUp) {
+                Text(stringResource(R.string.notice_old_ha_version), color = MaterialTheme.colorScheme.tertiary)
+            }
 
             if (connected) {
                 HorizontalDivider()
@@ -165,17 +179,61 @@ private fun SectionTitle(res: Int) {
 }
 
 @Composable
+private fun UrlField(
+    value: String,
+    onChange: (String) -> Unit,
+    label: Int,
+    hint: Int,
+    plainHttp: Boolean,
+    status: ConnectionStatus,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            label = { Text(stringResource(label)) },
+            placeholder = { Text(stringResource(hint)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (plainHttp) {
+            Text(stringResource(R.string.settings_http_warning), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
+        }
+        ConnectionStatusText(status)
+    }
+}
+
+@Composable
 private fun ConnectionStatusText(status: ConnectionStatus) {
     when (status) {
         ConnectionStatus.Unknown -> Unit
         ConnectionStatus.Testing -> Text(stringResource(R.string.settings_testing))
-        is ConnectionStatus.Connected -> {
+        is ConnectionStatus.Connected ->
             Text(stringResource(R.string.settings_connected, status.haVersion), color = MaterialTheme.colorScheme.primary)
-            if (!status.supportsFollowUp) {
-                Text(stringResource(R.string.notice_old_ha_version), color = MaterialTheme.colorScheme.tertiary)
-            }
-        }
         is ConnectionStatus.Failed -> Text(errorText(status.error), color = MaterialTheme.colorScheme.error)
+    }
+}
+
+@Composable
+private fun HomeNetworks(state: SettingsUiState, viewModel: SettingsViewModel) {
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) viewModel.addCurrentNetwork()
+    }
+    Text(stringResource(R.string.settings_home_networks), style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.settings_home_networks_help), style = MaterialTheme.typography.bodySmall)
+    state.homeSsids.forEach { ssid ->
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(ssid, style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content), modifier = Modifier.weight(1f))
+            TextButton(onClick = { viewModel.removeNetwork(ssid) }) { Text(stringResource(R.string.settings_remove)) }
+        }
+    }
+    OutlinedButton(onClick = {
+        locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }) { Text(stringResource(R.string.settings_add_current_network)) }
+    if (state.ssidUnavailable) {
+        Text(stringResource(R.string.settings_ssid_unavailable), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }
 }
 

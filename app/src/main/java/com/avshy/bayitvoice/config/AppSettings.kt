@@ -3,33 +3,40 @@ package com.avshy.bayitvoice.config
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 /**
  * All user configuration. Non-secret values live in plain preferences;
- * the access token lives in encrypted preferences and is never logged.
+ * the access token lives in [SecretStore] and is never logged.
  */
 class AppSettings private constructor(context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    private val secrets: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "secrets",
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    private val secrets = SecretStore(context)
 
-    var serverUrl: String?
-        get() = prefs.getString(KEY_URL, null)
-        set(value) = prefs.edit { putString(KEY_URL, value) }
+    init {
+        migrate(context)
+    }
+
+    /** Address used on the home network. */
+    var homeUrl: String?
+        get() = prefs.getString(KEY_HOME_URL, null)
+        set(value) = prefs.edit { putString(KEY_HOME_URL, value) }
+
+    /** Address used away from home. */
+    var externalUrl: String?
+        get() = prefs.getString(KEY_EXTERNAL_URL, null)
+        set(value) = prefs.edit { putString(KEY_EXTERNAL_URL, value) }
+
+    /** SSIDs of the home Wi-Fi networks; empty = decide by trying the home address first. */
+    var homeSsids: Set<String>
+        get() = prefs.getStringSet(KEY_HOME_SSIDS, emptySet()).orEmpty()
+        set(value) = prefs.edit { putStringSet(KEY_HOME_SSIDS, value) }
 
     var accessToken: String?
-        get() = secrets.getString(KEY_TOKEN, null)
-        set(value) = secrets.edit { putString(KEY_TOKEN, value) }
+        get() = secrets.get(KEY_TOKEN)
+        set(value) = secrets.put(KEY_TOKEN, value)
 
     /** Null means "Default (HA preferred pipeline)". */
     var pipelineId: String?
@@ -54,25 +61,45 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_OLD_VERSION_NOTICE, false)
         set(value) = prefs.edit { putBoolean(KEY_OLD_VERSION_NOTICE, value) }
 
-    val server: ServerUrl? get() = serverUrl?.let(ServerUrl::parse)
+    val homeServer: ServerUrl? get() = homeUrl?.let(ServerUrl::parse)
 
-    val isConfigured: Boolean get() = server != null && !accessToken.isNullOrEmpty()
+    val externalServer: ServerUrl? get() = externalUrl?.let(ServerUrl::parse)
+
+    val isConfigured: Boolean
+        get() = (homeServer != null || externalServer != null) && !accessToken.isNullOrEmpty()
 
     fun signOut() {
-        secrets.edit { remove(KEY_TOKEN) }
+        secrets.put(KEY_TOKEN, null)
         prefs.edit { remove(KEY_HA_VERSION) }
+    }
+
+    /** Moves values written by earlier versions to their current keys. */
+    private fun migrate(context: Context) {
+        prefs.getString(LEGACY_KEY_URL, null)?.let { legacy ->
+            val server = ServerUrl.parse(legacy)
+            prefs.edit {
+                if (server != null) putString(if (server.isHttps) KEY_EXTERNAL_URL else KEY_HOME_URL, server.base)
+                remove(LEGACY_KEY_URL)
+            }
+        }
+        // Token store of the deprecated EncryptedSharedPreferences; the token must be entered again.
+        context.deleteSharedPreferences(LEGACY_SECRETS_FILE)
     }
 
     companion object {
         const val DEFAULT_AUTO_CLOSE_SECONDS = 5
 
-        private const val KEY_URL = "server_url"
+        private const val KEY_HOME_URL = "home_url"
+        private const val KEY_EXTERNAL_URL = "external_url"
+        private const val KEY_HOME_SSIDS = "home_ssids"
         private const val KEY_TOKEN = "access_token"
         private const val KEY_PIPELINE = "pipeline_id"
         private const val KEY_AUTO_CLOSE = "auto_close_seconds"
         private const val KEY_CHIME = "chime_enabled"
         private const val KEY_HA_VERSION = "ha_version"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"
+        private const val LEGACY_KEY_URL = "server_url"
+        private const val LEGACY_SECRETS_FILE = "secrets"
 
         @Volatile private var instance: AppSettings? = null
 

@@ -23,7 +23,7 @@ Nothing about a specific home may be hard-coded: no URLs, tokens, pipeline ids, 
 - `AudioRecord` for capture: 16 kHz, mono, PCM 16-bit little-endian.
 - Media3 ExoPlayer (or `MediaPlayer`) for TTS playback.
 - Wake word: openWakeWord models (`.tflite`) run with TensorFlow Lite on-device (Phase 2).
-- Credentials stored with `EncryptedSharedPreferences`; never logged.
+- Credentials encrypted with an AES-GCM key held in the Android Keystore (a small in-app store; `androidx.security:security-crypto` / `EncryptedSharedPreferences` is deprecated and not used); never logged.
 - UI localized: English and Hebrew to start, following the system locale, with full RTL support. All strings in resources, none in code.
 - Package name: `com.avshy.bayitvoice` (placeholder; keep it in one place so it can be changed).
 
@@ -31,7 +31,12 @@ Nothing about a specific home may be hard-coded: no URLs, tokens, pipeline ids, 
 
 ### 3.1 Server address
 
-- A text field for the HA URL. Accept `http://` or `https://`, a local IP, a hostname, or an external domain, with or without a port. Normalize it: trim, drop trailing `/`, default the scheme to `http://` for bare local IPs.
+- Two optional URL fields: **home address** (used on the home network) and **external address** (used elsewhere). At least one is required. Accept `http://` or `https://`, a local IP, a hostname, or an external domain, with or without a port. Normalize it: trim, drop trailing `/`, default the scheme to `http://` for bare local IPs.
+- Choosing which address to use, per connection:
+  - **Home Wi-Fi networks (optional).** The user lists the SSIDs of their home networks ("Add current network" fills it in). Reading the SSID needs the location permission and location turned on; it is requested only when the user adds a network. When the current SSID is known: on a home network use home first, otherwise use external only.
+  - **Fallback without SSIDs (default, no permission).** On Wi-Fi or Ethernet, try the home address with a short timeout (about 2 s), then the external one. On mobile data, try external first.
+  - A wrong token never triggers a fallback; it is reported as an auth error.
+- "Test connection" tests each configured address separately and shows the result for each.
 - Derive the WebSocket URL: `http` → `ws`, `https` → `wss`, path `/api/websocket`.
 - Optional (Phase 3): discover local servers via mDNS service `_home-assistant._tcp` and offer them as one-tap choices.
 - Plain `http` is allowed only for private/local addresses; show a warning. Configure `network_security_config` accordingly.
@@ -209,7 +214,7 @@ Test on the developer's own HA, but always through the configuration screens. Ne
 
 ### Phase 1: Push-to-talk (no wake word)
 
-- Onboarding: URL, token, connection test, pipeline picker with "Default".
+- Onboarding: home and external URLs, optional home Wi-Fi networks, token, connection test, pipeline picker with "Default".
 - Mic button runs a full turn: stream audio, show texts, play TTS.
 - Auto-close after success; stay open on failure.
 - Continue-conversation loop.
@@ -221,6 +226,7 @@ Acceptance:
 - "Default" follows HA's preferred pipeline: change the preferred pipeline in HA and the app uses the new one without changes.
 - A wrong token or unreachable server shows a clear error, and the UI does not close.
 - Works with both a local `http://` address and an external `https://` address.
+- With both addresses set: on home Wi-Fi the home address is used; on mobile data the external one is used, with no change in settings. Works both with and without home SSIDs configured.
 
 ### Phase 2: Wake word
 

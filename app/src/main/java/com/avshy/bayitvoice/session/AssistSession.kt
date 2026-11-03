@@ -9,6 +9,7 @@ import com.avshy.bayitvoice.config.ServerUrl
 import com.avshy.bayitvoice.ha.HaClient
 import com.avshy.bayitvoice.ha.HaException
 import com.avshy.bayitvoice.ha.HaVersion
+import com.avshy.bayitvoice.ha.ServerSelector
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -30,12 +31,15 @@ import org.json.JSONObject
  */
 class AssistSession(
     private val settings: AppSettings,
+    private val selector: ServerSelector,
     private val client: HaClient = HaClient(),
     private val mic: MicRecorder = MicRecorder(),
     private val tts: TtsPlayer = TtsPlayer(),
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
+
+    private var connectedServer: ServerUrl? = null
 
     private sealed interface TurnOutcome {
         data class Succeeded(val conversationId: String?, val continueConversation: Boolean) : TurnOutcome
@@ -45,13 +49,11 @@ class AssistSession(
 
     /** Runs a conversation that starts with a manual turn. */
     suspend fun converse(): SessionEnd {
-        val server = settings.server
         val token = settings.accessToken
-        if (server == null || token.isNullOrEmpty()) return fail(SessionError.NotConfigured)
-        if (!server.isAllowed) return fail(SessionError.InsecureUrl)
+        if (!settings.isConfigured || token.isNullOrEmpty()) return fail(SessionError.NotConfigured)
 
         return try {
-            ensureConnected(server, token)
+            val server = ensureConnected(token)
             val pipelineId = resolvePipeline()
             val allowContinue = checkContinueSupport()
 
@@ -92,11 +94,14 @@ class AssistSession(
 
     fun close() = client.close()
 
-    private suspend fun ensureConnected(server: ServerUrl, token: String) {
-        if (client.isConnected) return
+    /** Returns the address the client is connected to, connecting first if needed. */
+    private suspend fun ensureConnected(token: String): ServerUrl {
+        connectedServer?.takeIf { client.isConnected }?.let { return it }
         _state.update { it.copy(phase = SessionPhase.Connecting, error = null) }
-        val version = client.connect(server.webSocketUrl, token)
-        settings.lastHaVersion = version
+        val server = selector.connect(client, token)
+        settings.lastHaVersion = client.haVersion
+        connectedServer = server
+        return server
     }
 
     /** Returns the stored pipeline id, or null (HA preferred) if it no longer exists. */

@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.NetworkInfo
+import com.avshy.bayitvoice.ha.ServerSelector
 import com.avshy.bayitvoice.session.AssistSession
 import com.avshy.bayitvoice.session.SessionEnd
 import com.avshy.bayitvoice.session.SessionState
@@ -17,7 +19,7 @@ import kotlinx.coroutines.launch
 class SessionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val settings = AppSettings.get(app)
-    private val session = AssistSession(settings)
+    private val session = AssistSession(settings, ServerSelector(settings, NetworkInfo(app)))
 
     val state: StateFlow<SessionState> = session.state
 

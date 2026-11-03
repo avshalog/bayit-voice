@@ -44,7 +44,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.security.crypto)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     debugImplementation(libs.androidx.compose.ui.tooling)

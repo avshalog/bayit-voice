@@ -5,8 +5,14 @@
     <!-- Settings -->
     <string name="settings_open_assistant">דבר עם העוזר</string>
     <string name="settings_section_server">שרת Home Assistant</string>
-    <string name="settings_url_label">כתובת השרת</string>
-    <string name="settings_url_hint">http://192.168.1.10:8123</string>
+    <string name="settings_home_url_label">כתובת ביתית</string>
+    <string name="settings_external_url_label">כתובת חיצונית</string>
+    <string name="settings_urls_help">מלא אחת או את שתיהן. בבית האפליקציה משתמשת בכתובת הביתית, ומחוץ לבית בחיצונית.</string>
+    <string name="settings_home_networks">רשתות Wi-Fi ביתיות (אופציונלי)</string>
+    <string name="settings_home_networks_help">בלי רשתות ברשימה, האפליקציה מנסה קודם את הכתובת הביתית בכל פעם שהיא מחוברת ל-Wi-Fi. הוספת הרשתות הביתיות בוחרת כתובת מהר יותר. קריאת שם הרשת דורשת הרשאת מיקום ומיקום מופעל.</string>
+    <string name="settings_add_current_network">הוסף את הרשת הנוכחית</string>
+    <string name="settings_remove">הסר</string>
+    <string name="settings_ssid_unavailable">לא ניתן לקרוא את שם רשת ה-Wi-Fi. ודא שאתה מחובר ל-Wi-Fi ושהמיקום מופעל.</string>
     <string name="settings_http_warning">הכתובת משתמשת ב-http רגיל. התעבורה, כולל הטוקן, אינה מוצפנת. השתמש בה רק ברשת הביתית.</string>
     <string name="settings_token_label">טוקן גישה ארוך טווח</string>
     <string name="settings_token_saved">נשמר. הדבק טוקן חדש כדי להחליף.</string>

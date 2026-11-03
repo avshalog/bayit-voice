@@ -5,8 +5,16 @@
     <!-- Settings -->
     <string name="settings_open_assistant">Talk to assistant</string>
     <string name="settings_section_server">Home Assistant server</string>
-    <string name="settings_url_label">Server address</string>
-    <string name="settings_url_hint">http://192.168.1.10:8123</string>
+    <string name="settings_home_url_label">Home address</string>
+    <string name="settings_home_url_hint" translatable="false">http://192.168.1.10:8123</string>
+    <string name="settings_external_url_label">External address</string>
+    <string name="settings_external_url_hint" translatable="false">https://example.duckdns.org</string>
+    <string name="settings_urls_help">Fill in one or both. At home the app uses the home address; elsewhere, the external one.</string>
+    <string name="settings_home_networks">Home Wi-Fi networks (optional)</string>
+    <string name="settings_home_networks_help">Without networks listed, the app tries the home address first whenever it is on Wi-Fi. Adding your home networks picks the address faster. Reading the network name requires location permission and location turned on.</string>
+    <string name="settings_add_current_network">Add current network</string>
+    <string name="settings_remove">Remove</string>
+    <string name="settings_ssid_unavailable">Could not read the Wi-Fi name. Make sure you are on Wi-Fi and that location is turned on.</string>
     <string name="settings_http_warning">This address uses plain http. Traffic, including your token, is not encrypted. Use it only on your home network.</string>
     <string name="settings_token_label">Long-lived access token</string>
     <string name="settings_token_saved">Saved. Paste a new token to replace it.</string>

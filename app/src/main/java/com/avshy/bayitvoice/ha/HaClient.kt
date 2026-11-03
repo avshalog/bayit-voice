@@ -33,7 +33,7 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
     val isConnected: Boolean get() = socket != null
 
     /** Opens the socket and authenticates. Returns the HA version from `auth_ok`. */
-    suspend fun connect(webSocketUrl: String, token: String): String {
+    suspend fun connect(webSocketUrl: String, token: String, timeoutMs: Long = CONNECT_TIMEOUT_MS): String {
         close()
         val channel = Channel<Incoming>(Channel.UNLIMITED).also { incoming = it }
         nextId = 1
@@ -55,7 +55,7 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
         })
 
         try {
-            withTimeout(CONNECT_TIMEOUT_MS) {
+            withTimeout(timeoutMs) {
                 val first = receive()
                 if (first.optString("type") != "auth_required") throw HaException.Protocol("Expected auth_required")
                 sendJson(JSONObject().put("type", "auth").put("access_token", token))
@@ -135,7 +135,7 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
 
     companion object {
         private const val TAG = "HaClient"
-        private const val CONNECT_TIMEOUT_MS = 10_000L
+        const val CONNECT_TIMEOUT_MS = 10_000L
 
         val sharedHttp: OkHttpClient by lazy {
             OkHttpClient.Builder()
