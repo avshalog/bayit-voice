@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bayit Voice</string>
+
+    <!-- Settings -->
+    <string name="settings_open_assistant">Talk to assistant</string>
+    <string name="settings_section_server">Home Assistant server</string>
+    <string name="settings_url_label">Server address</string>
+    <string name="settings_url_hint">http://192.168.1.10:8123</string>
+    <string name="settings_http_warning">This address uses plain http. Traffic, including your token, is not encrypted. Use it only on your home network.</string>
+    <string name="settings_token_label">Long-lived access token</string>
+    <string name="settings_token_saved">Saved. Paste a new token to replace it.</string>
+    <string name="settings_token_help">In Home Assistant, open your user profile → Security → Long-lived access tokens → Create token. Copy it and paste it here.</string>
+    <string name="settings_test_connection">Test connection</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_testing">Connecting…</string>
+    <string name="settings_connected">Connected. Home Assistant %1$s</string>
+    <string name="settings_section_pipeline">Assist pipeline</string>
+    <string name="settings_pipeline_default">Default (HA preferred pipeline)</string>
+    <string name="settings_pipeline_currently">Currently: %1$s</string>
+    <string name="settings_section_behaviour">Behaviour</string>
+    <string name="settings_auto_close_label">Auto-close delay (seconds)</string>
+    <string name="settings_auto_close_help">0 = never close automatically</string>
+    <string name="settings_chime">Chime when listening starts</string>
+
+    <!-- Notices -->
+    <string name="notice_pipeline_missing">The selected pipeline no longer exists. Using the default pipeline.</string>
+    <string name="notice_old_ha_version">This Home Assistant version does not support automatic follow-up questions. Tap the mic to answer a question.</string>
+
+    <!-- Session -->
+    <string name="session_close">Close</string>
+    <string name="session_mic">Speak</string>
+    <string name="phase_idle">Ready</string>
+    <string name="phase_connecting">Connecting…</string>
+    <string name="phase_listening">Listening…</string>
+    <string name="phase_thinking">Thinking…</string>
+    <string name="phase_speaking">Speaking…</string>
+    <string name="phase_done">Done</string>
+    <string name="phase_error">Something went wrong</string>
+
+    <!-- Errors -->
+    <string name="error_not_configured">Enter the server address and access token in settings first.</string>
+    <string name="error_invalid_url">The server address is not valid.</string>
+    <string name="error_insecure_url">Plain http is allowed only for local addresses. Use https for this server.</string>
+    <string name="error_auth_invalid">The access token was rejected. Create a new token in Home Assistant and enter it in settings.</string>
+    <string name="error_unreachable">Cannot reach the server. Check the address and your network.</string>
+    <string name="error_disconnected">The connection to Home Assistant was lost.</string>
+    <string name="error_timeout">Home Assistant did not answer in time.</string>
+    <string name="error_no_speech">No speech was detected. Tap the mic and try again.</string>
+    <string name="error_microphone">The microphone could not be opened.</string>
+    <string name="error_server">Home Assistant error: %1$s</string>
+</resources>

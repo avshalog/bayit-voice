@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bayit Voice</string>
+
+    <!-- Settings -->
+    <string name="settings_open_assistant">דבר עם העוזר</string>
+    <string name="settings_section_server">שרת Home Assistant</string>
+    <string name="settings_url_label">כתובת השרת</string>
+    <string name="settings_url_hint">http://192.168.1.10:8123</string>
+    <string name="settings_http_warning">הכתובת משתמשת ב-http רגיל. התעבורה, כולל הטוקן, אינה מוצפנת. השתמש בה רק ברשת הביתית.</string>
+    <string name="settings_token_label">טוקן גישה ארוך טווח</string>
+    <string name="settings_token_saved">נשמר. הדבק טוקן חדש כדי להחליף.</string>
+    <string name="settings_token_help">ב-Home Assistant פתח את פרופיל המשתמש ← אבטחה ← טוקנים לגישה ארוכת טווח ← צור טוקן. העתק והדבק אותו כאן.</string>
+    <string name="settings_test_connection">בדוק חיבור</string>
+    <string name="settings_sign_out">התנתק</string>
+    <string name="settings_testing">מתחבר…</string>
+    <string name="settings_connected">מחובר. Home Assistant %1$s</string>
+    <string name="settings_section_pipeline">צינור Assist</string>
+    <string name="settings_pipeline_default">ברירת מחדל (הצינור המועדף ב-HA)</string>
+    <string name="settings_pipeline_currently">כרגע: %1$s</string>
+    <string name="settings_section_behaviour">התנהגות</string>
+    <string name="settings_auto_close_label">סגירה אוטומטית אחרי (שניות)</string>
+    <string name="settings_auto_close_help">0 = לעולם לא לסגור אוטומטית</string>
+    <string name="settings_chime">צליל כשמתחילה האזנה</string>
+
+    <!-- Notices -->
+    <string name="notice_pipeline_missing">הצינור שנבחר כבר לא קיים. משתמש בצינור ברירת המחדל.</string>
+    <string name="notice_old_ha_version">גרסת Home Assistant הזו לא תומכת בשאלות המשך אוטומטיות. הקש על המיקרופון כדי לענות על שאלה.</string>
+
+    <!-- Session -->
+    <string name="session_close">סגור</string>
+    <string name="session_mic">דבר</string>
+    <string name="phase_idle">מוכן</string>
+    <string name="phase_connecting">מתחבר…</string>
+    <string name="phase_listening">מקשיב…</string>
+    <string name="phase_thinking">חושב…</string>
+    <string name="phase_speaking">מדבר…</string>
+    <string name="phase_done">בוצע</string>
+    <string name="phase_error">משהו השתבש</string>
+
+    <!-- Errors -->
+    <string name="error_not_configured">הזן קודם כתובת שרת וטוקן גישה בהגדרות.</string>
+    <string name="error_invalid_url">כתובת השרת אינה תקינה.</string>
+    <string name="error_insecure_url">http רגיל מותר רק לכתובות מקומיות. השתמש ב-https לשרת הזה.</string>
+    <string name="error_auth_invalid">טוקן הגישה נדחה. צור טוקן חדש ב-Home Assistant והזן אותו בהגדרות.</string>
+    <string name="error_unreachable">אין גישה לשרת. בדוק את הכתובת ואת הרשת.</string>
+    <string name="error_disconnected">החיבור ל-Home Assistant נותק.</string>
+    <string name="error_timeout">Home Assistant לא ענה בזמן.</string>
+    <string name="error_no_speech">לא זוהה דיבור. הקש על המיקרופון ונסה שוב.</string>
+    <string name="error_microphone">לא ניתן לפתוח את המיקרופון.</string>
+    <string name="error_server">שגיאה מ-Home Assistant: %1$s</string>
+</resources>

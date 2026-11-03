@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext is permitted at the platform level because local HA servers are reached by
+  arbitrary user-entered IPs and hostnames, which cannot be listed here. The app itself
+  rejects plain http for public addresses (see ServerUrl.isLocalHost).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
