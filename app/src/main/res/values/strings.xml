@@ -68,6 +68,7 @@
     <string name="wake_model_imported">Imported</string>
     <string name="wake_import">Import model…</string>
     <string name="wake_import_name">Name for this wake word</string>
+    <string name="wake_load_failed">The wake word model could not be loaded, so listening was switched off. Choose another model and try again.</string>
     <string name="wake_import_failed">This file is not a valid openWakeWord model (.tflite).</string>
     <string name="wake_model_name">Name</string>
     <string name="wake_rename">Rename wake word</string>

@@ -66,6 +66,7 @@
     <string name="wake_model_imported">מיובא</string>
     <string name="wake_import">ייבוא מודל…</string>
     <string name="wake_import_name">שם למילת ההפעלה</string>
+    <string name="wake_load_failed">לא ניתן היה לטעון את מודל מילת ההפעלה, ולכן ההאזנה כובתה. בחר מודל אחר ונסה שוב.</string>
     <string name="wake_import_failed">הקובץ אינו מודל openWakeWord תקין (tflite).</string>
     <string name="wake_model_name">שם</string>
     <string name="wake_rename">שינוי שם מילת הפעלה</string>

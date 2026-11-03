@@ -34,6 +34,7 @@ data class WakeWordUiState(
     val ignoresBatteryOptimization: Boolean = false,
     val importing: Boolean = false,
     val importFailed: Boolean = false,
+    val loadFailed: Boolean = false,
 )
 
 /** Wake-word, background and connection-mode settings. */
@@ -62,6 +63,7 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
     fun setEnabled(enabled: Boolean) {
         if (enabled && !hasMicPermission()) return
         settings.wakeWordEnabled = enabled
+        if (enabled) settings.wakeModelLoadFailed = false
         if (enabled) WakeWordService.start(getApplication()) else WakeWordService.stop(getApplication())
         reload()
     }
@@ -134,6 +136,7 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
                 connectionMode = settings.connectionMode,
                 canOpenOverLockScreen = Settings.canDrawOverlays(context),
                 ignoresBatteryOptimization = power.isIgnoringBatteryOptimizations(context.packageName),
+                loadFailed = settings.wakeModelLoadFailed,
             )
         }
     }

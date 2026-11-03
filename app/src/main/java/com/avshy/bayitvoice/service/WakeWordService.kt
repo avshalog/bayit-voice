@@ -23,6 +23,7 @@ import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.wakeword.WakeWordDetector
 import com.avshy.bayitvoice.wakeword.WakeWordEngine
 import com.avshy.bayitvoice.wakeword.WakeWordModels
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,7 +42,10 @@ import kotlinx.coroutines.runBlocking
  */
 class WakeWordService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    // A failure in one job must never take the whole app process down.
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, e -> Log.e(TAG, "Background job failed", e) },
+    )
     private var listening: Job? = null
     private var connection: Job? = null
     private var engine: WakeWordEngine? = null
@@ -99,7 +103,17 @@ class WakeWordService : Service() {
             // The old engine may still be mid-frame; close it only once its capture has stopped.
             previous?.cancelAndJoin()
             engine?.close()
-            val newEngine = models.createEngine(model)
+            engine = null
+            val newEngine = try {
+                models.createEngine(model)
+            } catch (e: Exception) {
+                // Never crash-loop on a bad model: switch listening off and report it in settings.
+                Log.e(TAG, "Cannot load wake word model '${model.name}'", e)
+                settings.wakeWordEnabled = false
+                settings.wakeModelLoadFailed = true
+                stopSelf()
+                return@launch
+            }
             engine = newEngine
             val newDetector = WakeWordDetector(newEngine, settings.wakeThreshold) { score -> onWakeWord(score) }
             detector = newDetector

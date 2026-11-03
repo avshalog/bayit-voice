@@ -69,6 +69,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getFloat(KEY_WAKE_THRESHOLD, DEFAULT_WAKE_THRESHOLD)
         set(value) = prefs.edit { putFloat(KEY_WAKE_THRESHOLD, value.coerceIn(0.05f, 0.95f)) }
 
+    /** Set when the service could not load the selected model; shown in settings until retried. */
+    var wakeModelLoadFailed: Boolean
+        get() = prefs.getBoolean(KEY_WAKE_LOAD_FAILED, false)
+        set(value) = prefs.edit { putBoolean(KEY_WAKE_LOAD_FAILED, value) }
+
     var startOnBoot: Boolean
         get() = prefs.getBoolean(KEY_START_ON_BOOT, false)
         set(value) = prefs.edit { putBoolean(KEY_START_ON_BOOT, value) }
@@ -126,6 +131,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_WAKE_ENABLED = "wake_enabled"
         private const val KEY_WAKE_MODEL = "wake_model"
         private const val KEY_WAKE_THRESHOLD = "wake_threshold"
+        private const val KEY_WAKE_LOAD_FAILED = "wake_load_failed"
         private const val KEY_START_ON_BOOT = "start_on_boot"
         private const val KEY_CONNECTION_MODE = "connection_mode"
         private const val KEY_HA_VERSION = "ha_version"

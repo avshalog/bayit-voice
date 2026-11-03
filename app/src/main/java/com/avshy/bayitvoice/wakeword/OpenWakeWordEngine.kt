@@ -20,7 +20,10 @@ class OpenWakeWordEngine(
     override val frameSamples: Int = FRAME_SAMPLES
 
     private val options = Interpreter.Options().setNumThreads(1).setUseXNNPACK(true)
-    private val mel = Interpreter(melModel, options)
+
+    // XNNPACK cannot reshape the melspectrogram graph after its input is resized
+    // ("XNNPack delegate failed to reshape runtime"); this small model runs on the default kernels.
+    private val mel = Interpreter(melModel, Interpreter.Options().setNumThreads(1).setUseXNNPACK(false))
     private val embedding = Interpreter(embeddingModel, options)
     private val wake = Interpreter(wakeModel, options)
 

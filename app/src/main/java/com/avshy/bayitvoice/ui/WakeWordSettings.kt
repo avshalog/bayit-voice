@@ -67,6 +67,9 @@ fun WakeWordSettings(
         )
     }
     Text(stringResource(R.string.wake_enabled_help), style = MaterialTheme.typography.bodySmall)
+    if (state.loadFailed) {
+        Text(stringResource(R.string.wake_load_failed), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
 
     Text(stringResource(R.string.wake_model), style = MaterialTheme.typography.titleSmall)
     state.models.forEach { model ->
