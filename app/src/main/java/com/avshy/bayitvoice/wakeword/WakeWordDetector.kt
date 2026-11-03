@@ -46,6 +46,18 @@ class WakeWordDetector(
         if (hangover <= 0) gateOpen = false
     }
 
+    /**
+     * Forgets all audio. Call whenever capture (re)starts: after a session the engine still
+     * holds the wake word that started it and would detect it again on the first new frame.
+     */
+    fun reset() {
+        engine.reset()
+        gateOpen = false
+        hangover = 0
+        preRollStart = 0
+        preRollCount = 0
+    }
+
     private fun score(frame: ShortArray) {
         framesProcessed++
         val score = engine.process(frame)

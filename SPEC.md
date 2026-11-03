@@ -195,6 +195,8 @@ When several devices running the app hear the same wake word, only the one close
 - Runs inside a foreground service of type `microphone`. Declare the `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MICROPHONE` permissions, and show a persistent notification.
 - Recent Android versions block starting a microphone foreground service from the background. Start the service from the Activity; for always-on devices, offer "start on boot" that opens the Activity, which then starts the service. Guide the user to exclude the app from battery optimisation.
 - On detection: stop wake-word capture, open the session UI, and start the Phase-1 flow.
+- If no speech follows the wake word within about 8 s (as with follow-ups, section 5.3), end the session and close the UI without an error; it was most likely a false trigger. A manual mic tap with no speech still shows the "no speech" error and stays open.
+- When wake-word capture resumes after a session, clear the engine's audio history; otherwise the wake word that started the session is detected again.
 - Android blocks activity starts from the background, including from a foreground service. To open the session UI (and the "start on boot" activity) the app needs the "display over other apps" permission (`SYSTEM_ALERT_WINDOW`); settings show its status with a button to grant it. Without it, the app posts a high-priority full-screen-intent notification instead, which the user taps.
 
 ## 7. Performance requirements

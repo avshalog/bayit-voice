@@ -140,6 +140,7 @@ class WakeWordService : Service() {
 
     private suspend fun capture(frameSamples: Int, detector: WakeWordDetector) {
         MicArbiter.setWakeCapturing(true)
+        detector.reset()
         try {
             MicRecorder().recordFrames(frameSamples, detector::onFrame)
         } catch (e: MicrophoneException) {

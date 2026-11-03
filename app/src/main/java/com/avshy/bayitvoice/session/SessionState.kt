@@ -44,8 +44,8 @@ enum class SessionEnd {
     /** Last turn succeeded with no follow-up: auto-close after the configured delay. */
     Completed,
 
-    /** A follow-up got no speech: close now. */
-    FollowUpSilent,
+    /** A hands-free turn (after a wake word or a follow-up question) heard no speech: close now. */
+    Silent,
 
     /** Stay open and show the error. */
     Failed,

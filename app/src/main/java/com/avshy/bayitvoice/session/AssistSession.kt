@@ -49,10 +49,10 @@ class AssistSession(
     }
 
     /**
-     * Runs a conversation. [chimeFirst] plays the listening chime before the first turn
+     * Runs a conversation. [fromWakeWord] plays the listening chime before the first turn
      * (after a wake word); manual turns start silently.
      */
-    suspend fun converse(chimeFirst: Boolean = false): SessionEnd {
+    suspend fun converse(fromWakeWord: Boolean = false): SessionEnd {
         if (!settings.isConfigured) return fail(SessionError.NotConfigured)
 
         return try {
@@ -62,15 +62,17 @@ class AssistSession(
 
             var conversationId: String? = null
             var followUp = false
-            if (chimeFirst && settings.chimeEnabled) Chime.play()
+            // Hands-free turns (after a wake word or a follow-up question) end quietly on silence.
+            var handsFree = fromWakeWord
+            if (fromWakeWord && settings.chimeEnabled) Chime.play()
             while (true) {
                 if (followUp && settings.chimeEnabled) Chime.play()
-                when (val turn = runTurn(server, pipelineId, conversationId, followUp)) {
+                when (val turn = runTurn(server, pipelineId, conversationId, handsFree)) {
                     is TurnOutcome.Failed -> return fail(turn.error)
                     TurnOutcome.NoSpeech ->
-                        return if (followUp) {
+                        return if (handsFree) {
                             _state.update { it.copy(phase = SessionPhase.Done) }
-                            SessionEnd.FollowUpSilent
+                            SessionEnd.Silent
                         } else {
                             fail(SessionError.NoSpeech)
                         }
@@ -78,6 +80,7 @@ class AssistSession(
                         conversationId = turn.conversationId
                         if (turn.continueConversation && allowContinue) {
                             followUp = true
+                            handsFree = true
                         } else {
                             _state.update { it.copy(phase = SessionPhase.Done) }
                             return SessionEnd.Completed
@@ -127,7 +130,7 @@ class AssistSession(
         server: ServerUrl,
         pipelineId: String?,
         conversationId: String?,
-        followUp: Boolean,
+        handsFree: Boolean,
     ): TurnOutcome {
         _state.update { it.copy(phase = SessionPhase.Listening, userText = "", replyText = "", error = null) }
 
@@ -162,7 +165,7 @@ class AssistSession(
                             "run-start" -> {
                                 val handler = data.getJSONObject("runner_data").getInt("stt_binary_handler_id")
                                 streamer.start(handler.toByte())
-                                val silenceLimit = if (followUp) FOLLOW_UP_SILENCE_MS else FIRST_TURN_SILENCE_MS
+                                val silenceLimit = if (handsFree) HANDS_FREE_SILENCE_MS else MANUAL_SILENCE_MS
                                 timer = launch {
                                     delay(silenceLimit)
                                     heardNoSpeech = true
@@ -287,8 +290,8 @@ class AssistSession(
     companion object {
         private const val TAG = "AssistSession"
         private const val RUN_TIMEOUT_MS = 60_000L
-        private const val FIRST_TURN_SILENCE_MS = 10_000L
-        private const val FOLLOW_UP_SILENCE_MS = 8_000L
+        private const val MANUAL_SILENCE_MS = 10_000L
+        private const val HANDS_FREE_SILENCE_MS = 8_000L
         private const val SPEECH_SAFETY_MS = 10_000L
     }
 }

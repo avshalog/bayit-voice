@@ -49,13 +49,13 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
             previous?.cancelAndJoin()
             val end = try {
                 MicArbiter.beginSession()
-                session.converse(chimeFirst = fromWakeWord)
+                session.converse(fromWakeWord)
             } finally {
                 MicArbiter.endSession()
             }
             when (end) {
                 SessionEnd.Completed -> scheduleAutoClose()
-                SessionEnd.FollowUpSilent -> _closeRequested.value = true
+                SessionEnd.Silent -> _closeRequested.value = true
                 SessionEnd.Failed -> Unit
             }
         }
