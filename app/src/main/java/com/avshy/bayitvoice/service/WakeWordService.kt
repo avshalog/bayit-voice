@@ -20,6 +20,7 @@ import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.audio.MicRecorder
+import com.avshy.bayitvoice.audio.MicrophoneException
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.ha.ConnectionManager
@@ -141,7 +142,7 @@ class WakeWordService : Service() {
         MicArbiter.setWakeCapturing(true)
         try {
             MicRecorder().recordFrames(frameSamples, detector::onFrame)
-        } catch (e: IllegalStateException) {
+        } catch (e: MicrophoneException) {
             Log.w(TAG, "Microphone unavailable: ${e.message}")
         } finally {
             MicArbiter.setWakeCapturing(false)

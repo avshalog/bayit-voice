@@ -3,6 +3,7 @@ package com.avshy.bayitvoice.session
 import android.util.Log
 import com.avshy.bayitvoice.audio.Chime
 import com.avshy.bayitvoice.audio.MicRecorder
+import com.avshy.bayitvoice.audio.MicrophoneException
 import com.avshy.bayitvoice.audio.TtsPlayer
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ServerUrl
@@ -89,7 +90,7 @@ class AssistSession(
         } catch (e: HaException) {
             Log.w(TAG, "Session failed: ${e.javaClass.simpleName}")
             fail(e.toSessionError())
-        } catch (e: IllegalStateException) {
+        } catch (e: MicrophoneException) {
             Log.w(TAG, "Microphone failure", e)
             fail(SessionError.Microphone)
         }

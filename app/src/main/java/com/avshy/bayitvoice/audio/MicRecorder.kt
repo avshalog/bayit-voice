@@ -24,7 +24,7 @@ class MicRecorder {
             while (true) {
                 coroutineContext.ensureActive()
                 val read = record.read(buffer, 0, buffer.size)
-                if (read < 0) error("AudioRecord read failed: $read")
+                if (read < 0) throw MicrophoneException("AudioRecord read failed: $read")
                 if (read > 0) onChunk(buffer, read)
             }
         } finally {
@@ -47,7 +47,7 @@ class MicRecorder {
                 while (filled < frameSamples) {
                     coroutineContext.ensureActive()
                     val read = record.read(frame, filled, frameSamples - filled)
-                    if (read < 0) error("AudioRecord read failed: $read")
+                    if (read < 0) throw MicrophoneException("AudioRecord read failed: $read")
                     filled += read
                 }
                 onFrame(frame)
@@ -64,7 +64,7 @@ class MicRecorder {
         val record = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE, CHANNEL, ENCODING, maxOf(minSize, bufferBytes))
         if (record.state != AudioRecord.STATE_INITIALIZED) {
             record.release()
-            error("AudioRecord failed to initialize")
+            throw MicrophoneException("AudioRecord failed to initialize")
         }
         return record
     }
@@ -78,3 +78,6 @@ class MicRecorder {
         const val CHUNK_BYTES = SAMPLE_RATE / 25 * 2
     }
 }
+
+/** The microphone could not be opened or read (e.g. permission revoked, device busy). */
+class MicrophoneException(message: String) : Exception(message)
