@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 
 /** What the device knows about its current network. */
@@ -15,6 +16,12 @@ class NetworkInfo(context: Context) {
 
     val hasLocationPermission: Boolean
         get() = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /** Android 17+ blocks local-network addresses unless the user grants this. */
+    val hasLocalNetworkPermission: Boolean
+        get() = Build.VERSION.SDK_INT < LOCAL_NETWORK_PERMISSION_SDK ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_LOCAL_NETWORK) ==
             PackageManager.PERMISSION_GRANTED
 
     /** True on Wi-Fi or Ethernet, where the home address may be reachable. */
@@ -35,5 +42,14 @@ class NetworkInfo(context: Context) {
         @Suppress("DEPRECATION")
         if (ssid == WifiManager.UNKNOWN_SSID || ssid.isBlank()) return null
         return ssid.removeSurrounding("\"")
+    }
+
+    companion object {
+        const val LOCAL_NETWORK_PERMISSION_SDK = 37
+
+        /** Runtime permissions needed before talking to a home (local) address. */
+        fun localNetworkPermissions(): Array<String> =
+            if (Build.VERSION.SDK_INT >= LOCAL_NETWORK_PERMISSION_SDK) arrayOf(Manifest.permission.ACCESS_LOCAL_NETWORK)
+            else emptyArray()
     }
 }

@@ -54,8 +54,9 @@ class SessionActivity : ComponentActivity() {
 
     private val viewModel: SessionViewModel by viewModels()
 
-    private val micPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) viewModel.startConversation() else finish()
+    private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        // The local network permission is optional: without it the external address is used.
+        if (isGranted(Manifest.permission.RECORD_AUDIO)) viewModel.startConversation() else finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,12 +90,13 @@ class SessionActivity : ComponentActivity() {
     }
 
     private fun startWithPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            viewModel.startConversation()
-        } else {
-            micPermission.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        val needed = (arrayOf(Manifest.permission.RECORD_AUDIO) + viewModel.localNetworkPermissions())
+            .filterNot(::isGranted)
+        if (needed.isEmpty()) viewModel.startConversation() else permissions.launch(needed.toTypedArray())
     }
+
+    private fun isGranted(permission: String) =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
     private fun showOverLockScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -211,5 +213,6 @@ internal fun errorText(error: SessionError): String = when (error) {
     SessionError.Timeout -> stringResource(R.string.error_timeout)
     SessionError.NoSpeech -> stringResource(R.string.error_no_speech)
     SessionError.Microphone -> stringResource(R.string.error_microphone)
+    SessionError.LocalNetworkDenied -> stringResource(R.string.error_local_network_denied)
     is SessionError.Server -> stringResource(R.string.error_server, error.message)
 }

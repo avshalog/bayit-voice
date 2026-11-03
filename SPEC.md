@@ -36,6 +36,7 @@ Nothing about a specific home may be hard-coded: no URLs, tokens, pipeline ids, 
   - **Home Wi-Fi networks (optional).** The user lists the SSIDs of their home networks ("Add current network" fills it in). Reading the SSID needs the location permission and location turned on; it is requested only when the user adds a network. When the current SSID is known: on a home network use home first, otherwise use external only.
   - **Fallback without SSIDs (default, no permission).** On Wi-Fi or Ethernet, try the home address with a short timeout (about 2 s), then the external one. On mobile data, try external first.
   - A wrong token never triggers a fallback; it is reported as an auth error.
+- **Android 17+ local network permission.** Apps targeting API 37 cannot reach local-network addresses without the runtime permission `ACCESS_LOCAL_NETWORK`. Request it when a home address is tested or a session starts with one configured. If it is denied, skip the home address and show a clear error for it in settings.
 - "Test connection" tests each configured address separately and shows the result for each.
 - Derive the WebSocket URL: `http` → `ws`, `https` → `wss`, path `/api/websocket`.
 - Optional (Phase 3): discover local servers via mDNS service `_home-assistant._tcp` and offer them as one-tap choices.

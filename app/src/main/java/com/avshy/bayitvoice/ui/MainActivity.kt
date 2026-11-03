@@ -1,6 +1,7 @@
 package com.avshy.bayitvoice.ui
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,13 +38,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.config.NetworkInfo
 
 /** Onboarding and settings. */
 class MainActivity : ComponentActivity() {
@@ -69,6 +73,24 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel, onOpenAssistant: () -> Unit) {
     var token by rememberSaveable { mutableStateOf("") }
+    var pendingToken by remember { mutableStateOf("") }
+    // Android 17+ needs a runtime grant to reach the home address; test either way.
+    val localNetworkPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        viewModel.testConnection(pendingToken)
+    }
+    val context = LocalContext.current
+    val testConnection = {
+        val needed = NetworkInfo.localNetworkPermissions().filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (state.homeUrl.isNotBlank() && needed.isNotEmpty()) {
+            pendingToken = token
+            localNetworkPermission.launch(needed.toTypedArray())
+        } else {
+            viewModel.testConnection(token)
+        }
+        token = ""
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -123,10 +145,7 @@ private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel,
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
-                    onClick = {
-                        viewModel.testConnection(token)
-                        token = ""
-                    },
+                    onClick = testConnection,
                     enabled = !state.isTesting,
                 ) { Text(stringResource(R.string.settings_test_connection)) }
                 if (state.hasSavedToken) {

@@ -10,7 +10,7 @@ class ServerSelector(private val settings: AppSettings, private val network: Net
 
     /** Addresses to try, in order. */
     fun candidates(): List<ServerUrl> {
-        val home = settings.homeServer?.takeIf { it.isAllowed }
+        val home = settings.homeServer?.takeIf { it.isAllowed && canReachLocalNetwork() }
         val external = settings.externalServer?.takeIf { it.isAllowed }
         if (home == null || external == null) return listOfNotNull(home, external)
 
@@ -36,10 +36,17 @@ class ServerSelector(private val settings: AppSettings, private val network: Net
                 Log.i(TAG, "Connected via ${if (server == settings.homeServer) "home" else "external"} address")
                 return server
             } catch (e: HaException.Unreachable) {
+                Log.w(TAG, "${server.host} unreachable: ${e.cause}")
                 if (last) throw e
             }
         }
         error("unreachable")
+    }
+
+    private fun canReachLocalNetwork(): Boolean {
+        val granted = network.hasLocalNetworkPermission
+        if (!granted) Log.w(TAG, "Local network permission missing; skipping home address")
+        return granted
     }
 
     private companion object {

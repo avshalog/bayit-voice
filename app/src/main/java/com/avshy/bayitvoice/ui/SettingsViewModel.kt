@@ -1,6 +1,7 @@
 package com.avshy.bayitvoice.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avshy.bayitvoice.config.AppSettings
@@ -109,7 +110,14 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         if (formError != null) return
 
         viewModelScope.launch {
-            val homeTest = async { if (homeError == null && home != null) test(home, token) else null }
+            val homeTest = async {
+                when {
+                    homeError != null || home == null -> null
+                    !network.hasLocalNetworkPermission ->
+                        TestResult(ConnectionStatus.Failed(SessionError.LocalNetworkDenied), null)
+                    else -> test(home, token)
+                }
+            }
             val externalTest = async { if (externalError == null && external != null) test(external, token) else null }
             val homeResult = homeTest.await()
             val externalResult = externalTest.await()
@@ -184,6 +192,10 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    private companion object {
+        const val TAG = "SettingsViewModel"
+    }
+
     private class TestResult(val status: ConnectionStatus, val pipelines: PipelineList?)
 
     private suspend fun test(server: ServerUrl, token: String): TestResult {
@@ -193,6 +205,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             val pipelines = client.listPipelines()
             TestResult(ConnectionStatus.Connected(version, HaVersion.supportsContinueConversation(version)), pipelines)
         } catch (e: HaException) {
+            Log.w(TAG, "Test of ${server.host} failed: ${e.javaClass.simpleName}: ${e.cause}")
             TestResult(ConnectionStatus.Failed(e.toSessionError()), null)
         } finally {
             client.close()

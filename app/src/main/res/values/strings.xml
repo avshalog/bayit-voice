@@ -56,5 +56,6 @@
     <string name="error_timeout">Home Assistant did not answer in time.</string>
     <string name="error_no_speech">No speech was detected. Tap the mic and try again.</string>
     <string name="error_microphone">The microphone could not be opened.</string>
+    <string name="error_local_network_denied">The app is not allowed to access devices on the local network. Allow it in the app settings (Permissions → Nearby devices / Local network).</string>
     <string name="error_server">Home Assistant error: %1$s</string>
 </resources>

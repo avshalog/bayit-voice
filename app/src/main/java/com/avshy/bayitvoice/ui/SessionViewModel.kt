@@ -42,6 +42,10 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Permissions needed to reach the home address, if one is configured. */
+    fun localNetworkPermissions(): Array<String> =
+        if (settings.homeServer != null) NetworkInfo.localNetworkPermissions() else emptyArray()
+
     /** Any touch on the UI cancels a pending auto-close. */
     fun cancelAutoClose() {
         autoClose?.cancel()

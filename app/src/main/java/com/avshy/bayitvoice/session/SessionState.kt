@@ -15,6 +15,7 @@ sealed interface SessionError {
     data object Timeout : SessionError
     data object NoSpeech : SessionError
     data object Microphone : SessionError
+    data object LocalNetworkDenied : SessionError
 
     /** An error reported by HA; [message] is HA's own text (already in the pipeline's language). */
     data class Server(val message: String) : SessionError

@@ -54,5 +54,6 @@
     <string name="error_timeout">Home Assistant לא ענה בזמן.</string>
     <string name="error_no_speech">לא זוהה דיבור. הקש על המיקרופון ונסה שוב.</string>
     <string name="error_microphone">לא ניתן לפתוח את המיקרופון.</string>
+    <string name="error_local_network_denied">לאפליקציה אין הרשאה לגשת למכשירים ברשת המקומית. אפשר אותה בהגדרות האפליקציה (הרשאות ← מכשירים בקרבת מקום / רשת מקומית).</string>
     <string name="error_server">שגיאה מ-Home Assistant: %1$s</string>
 </resources>
