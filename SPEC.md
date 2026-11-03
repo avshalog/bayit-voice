@@ -22,7 +22,7 @@ Nothing about a specific home may be hard-coded: no URLs, tokens, pipeline ids, 
 - OkHttp for the WebSocket connection and for downloading TTS audio.
 - `AudioRecord` for capture: 16 kHz, mono, PCM 16-bit little-endian.
 - Media3 ExoPlayer (or `MediaPlayer`) for TTS playback.
-- Wake word: openWakeWord models (`.tflite`) run with TensorFlow Lite on-device (Phase 2).
+- Wake word: openWakeWord models (`.tflite`) run on-device with LiteRT (`com.google.ai.edge.litert`, the renamed TensorFlow Lite; same `org.tensorflow.lite.Interpreter` API) (Phase 2).
 - Credentials encrypted with an AES-GCM key held in the Android Keystore (a small in-app store; `androidx.security:security-crypto` / `EncryptedSharedPreferences` is deprecated and not used); never logged.
 - UI localized: English and Hebrew to start, following the system locale, with full RTL support. All strings in resources, none in code.
 - Package name: `com.avshy.bayitvoice` (placeholder; keep it in one place so it can be changed).
@@ -195,6 +195,7 @@ When several devices running the app hear the same wake word, only the one close
 - Runs inside a foreground service of type `microphone`. Declare the `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MICROPHONE` permissions, and show a persistent notification.
 - Recent Android versions block starting a microphone foreground service from the background. Start the service from the Activity; for always-on devices, offer "start on boot" that opens the Activity, which then starts the service. Guide the user to exclude the app from battery optimisation.
 - On detection: stop wake-word capture, open the session UI, and start the Phase-1 flow.
+- Android blocks activity starts from the background, including from a foreground service. To open the session UI (and the "start on boot" activity) the app needs the "display over other apps" permission (`SYSTEM_ALERT_WINDOW`); settings show its status with a button to grant it. Without it, the app posts a high-priority full-screen-intent notification instead, which the user taps.
 
 ## 7. Performance requirements
 
@@ -205,7 +206,7 @@ The app runs all day, so resource use is a first-class requirement.
 3. **WebSocket strategy, configurable:**
    - "Keep connected" (default): one authenticated idle connection for the fastest response; reconnect with exponential backoff; HA ping/pong to detect drops.
    - "Connect on demand": open the connection only after the wake word, for minimum background activity, at the cost of slightly slower first response.
-4. TFLite with the XNNPACK delegate; reuse buffers and interpreters, with no per-frame allocations.
+4. TFLite with the XNNPACK delegate; reuse buffers and interpreters, with no per-frame allocations in app code. (The Java `Interpreter.run` call itself allocates a few small objects per call; that happens only while the VAD gate is open.)
 5. No wake locks beyond what the foreground microphone service requires.
 6. Measure: log CPU time and memory in debug builds; target well under 5% average CPU on a mid-range phone in a quiet room.
 

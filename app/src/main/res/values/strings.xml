@@ -58,4 +58,70 @@
     <string name="error_microphone">The microphone could not be opened.</string>
     <string name="error_local_network_denied">The app is not allowed to access devices on the local network. Allow it in the app settings (Permissions → Nearby devices / Local network).</string>
     <string name="error_server">Home Assistant error: %1$s</string>
+
+    <!-- Wake word settings -->
+    <string name="settings_section_wake_word">Wake word</string>
+    <string name="wake_enabled">Listen for the wake word</string>
+    <string name="wake_enabled_help">Keeps the microphone on in the background, with a permanent notification. Audio stays on the device until the wake word is heard.</string>
+    <string name="wake_model">Wake word model</string>
+    <string name="wake_model_builtin">Built-in</string>
+    <string name="wake_model_imported">Imported</string>
+    <string name="wake_import">Import model…</string>
+    <string name="wake_import_name">Name for this wake word</string>
+    <string name="wake_import_failed">This file is not a valid openWakeWord model (.tflite).</string>
+    <string name="wake_model_name">Name</string>
+    <string name="wake_rename">Rename wake word</string>
+    <string name="wake_rename_short">Rename</string>
+    <string name="wake_train_guide">Train your own word</string>
+    <string name="wake_threshold">Detection threshold: %1$s</string>
+    <string name="wake_threshold_help">Lower = more sensitive, but more false triggers. Default 0.50.</string>
+    <string name="wake_over_lock_screen">Open over other apps and the lock screen</string>
+    <string name="wake_battery">Excluded from battery optimization</string>
+    <string name="wake_start_on_boot">Start listening when the device starts</string>
+    <string name="permission_ok">Allowed</string>
+    <string name="permission_missing">Not allowed. Needed for reliable always-on listening.</string>
+    <string name="permission_allow">Allow</string>
+    <string name="connection_mode">Connection to Home Assistant</string>
+    <string name="connection_keep">Keep connected</string>
+    <string name="connection_keep_help">Fastest response. Keeps one idle connection open.</string>
+    <string name="connection_on_demand">Connect on demand</string>
+    <string name="connection_on_demand_help">Least background activity. The first reply is slightly slower.</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="back">Back</string>
+
+    <!-- Notifications -->
+    <string name="channel_listening">Listening</string>
+    <string name="channel_alerts">Assistant</string>
+    <string name="notification_listening_title">Listening for the wake word</string>
+    <string name="notification_listening_text">Wake word: %1$s</string>
+    <string name="notification_stop">Stop</string>
+    <string name="notification_session_title">Wake word heard</string>
+    <string name="notification_session_text">Tap to talk to the assistant.</string>
+    <string name="notification_boot_title">Start listening</string>
+    <string name="notification_boot_text">Tap to start listening for the wake word.</string>
+
+    <!-- Training guide -->
+    <string name="guide_notebook_url" translatable="false">https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb?usp=sharing</string>
+    <string name="guide_title">Train your own wake word</string>
+    <string name="guide_intro">You can create a wake word of your choice, in any language, with the free openWakeWord training notebook on Google Colab. It takes about an hour and needs no programming.</string>
+    <string name="guide_step_1">Open the training notebook (button below) and sign in with a Google account.</string>
+    <string name="guide_step_2">Enter your wake word in the target word field. Use English letters (see the tips below).</string>
+    <string name="guide_step_3">Run the cell that generates sample audio and listen to it. If it does not sound like your word, change the spelling and try again.</string>
+    <string name="guide_step_4">Run the remaining cells to train the model. When it finishes, download the .tflite file.</string>
+    <string name="guide_step_5">Copy the file to this device, then tap \"Import model…\" in settings and give it a name.</string>
+    <string name="guide_open_notebook">Open the training notebook</string>
+    <string name="guide_tips_title">Tips for words that are not English</string>
+    <string name="guide_tip_phonetic">Spell the word phonetically in English letters, the way an English speaker would read it.</string>
+    <string name="guide_tip_sounds">Avoid sounds English lacks (for example a guttural ch or r). Choose a word that sounds similar without them.</string>
+    <string name="guide_tip_syllables">Prefer 3 to 4 syllables. Short words cause more false triggers.</string>
+    <string name="guide_tip_listen">Always listen to the generated samples before the full training run.</string>
+
+    <!-- About -->
+    <string name="about_title">About and licenses</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_models_title">Wake word models</string>
+    <string name="about_models_license">The built-in wake word models and the openWakeWord feature models (melspectrogram, embedding) are by David Scripka (openWakeWord) and are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0). They may not be used for commercial purposes. The openWakeWord code is licensed under Apache 2.0.</string>
+    <string name="about_libraries_title">Libraries</string>
+    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX and Jetpack Compose, Kotlin coroutines: Apache License 2.0.</string>
 </resources>

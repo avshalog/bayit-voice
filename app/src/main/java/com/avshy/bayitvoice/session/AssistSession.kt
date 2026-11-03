@@ -9,7 +9,7 @@ import com.avshy.bayitvoice.config.ServerUrl
 import com.avshy.bayitvoice.ha.HaClient
 import com.avshy.bayitvoice.ha.HaException
 import com.avshy.bayitvoice.ha.HaVersion
-import com.avshy.bayitvoice.ha.ServerSelector
+import com.avshy.bayitvoice.ha.ConnectionManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -31,15 +31,15 @@ import org.json.JSONObject
  */
 class AssistSession(
     private val settings: AppSettings,
-    private val selector: ServerSelector,
-    private val client: HaClient = HaClient(),
+    private val connections: ConnectionManager,
     private val mic: MicRecorder = MicRecorder(),
     private val tts: TtsPlayer = TtsPlayer(),
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
-    private var connectedServer: ServerUrl? = null
+    /** The connection of the conversation in progress. */
+    private lateinit var client: HaClient
 
     private sealed interface TurnOutcome {
         data class Succeeded(val conversationId: String?, val continueConversation: Boolean) : TurnOutcome
@@ -47,18 +47,21 @@ class AssistSession(
         data class Failed(val error: SessionError) : TurnOutcome
     }
 
-    /** Runs a conversation that starts with a manual turn. */
-    suspend fun converse(): SessionEnd {
-        val token = settings.accessToken
-        if (!settings.isConfigured || token.isNullOrEmpty()) return fail(SessionError.NotConfigured)
+    /**
+     * Runs a conversation. [chimeFirst] plays the listening chime before the first turn
+     * (after a wake word); manual turns start silently.
+     */
+    suspend fun converse(chimeFirst: Boolean = false): SessionEnd {
+        if (!settings.isConfigured) return fail(SessionError.NotConfigured)
 
         return try {
-            val server = ensureConnected(token)
+            val server = connect()
             val pipelineId = resolvePipeline()
             val allowContinue = checkContinueSupport()
 
             var conversationId: String? = null
             var followUp = false
+            if (chimeFirst && settings.chimeEnabled) Chime.play()
             while (true) {
                 if (followUp && settings.chimeEnabled) Chime.play()
                 when (val turn = runTurn(server, pipelineId, conversationId, followUp)) {
@@ -92,16 +95,12 @@ class AssistSession(
         }
     }
 
-    fun close() = client.close()
-
-    /** Returns the address the client is connected to, connecting first if needed. */
-    private suspend fun ensureConnected(token: String): ServerUrl {
-        connectedServer?.takeIf { client.isConnected }?.let { return it }
+    /** Gets a live connection (reusing a kept one) and returns the address it reached. */
+    private suspend fun connect(): ServerUrl {
         _state.update { it.copy(phase = SessionPhase.Connecting, error = null) }
-        val server = selector.connect(client, token)
-        settings.lastHaVersion = client.haVersion
-        connectedServer = server
-        return server
+        val connection = connections.acquire()
+        client = connection.client
+        return connection.server
     }
 
     /** Returns the stored pipeline id, or null (HA preferred) if it no longer exists. */

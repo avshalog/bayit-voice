@@ -3,13 +3,16 @@ package com.avshy.bayitvoice.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.config.NetworkInfo
-import com.avshy.bayitvoice.ha.ServerSelector
+import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.session.AssistSession
 import com.avshy.bayitvoice.session.SessionEnd
 import com.avshy.bayitvoice.session.SessionState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +22,12 @@ import kotlinx.coroutines.launch
 class SessionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val settings = AppSettings.get(app)
-    private val session = AssistSession(settings, ServerSelector(settings, NetworkInfo(app)))
+
+    /** "Keep connected" shares the service's connection; "on demand" owns one per session UI. */
+    private val ownConnection = settings.connectionMode == ConnectionMode.OnDemand
+    private val connections =
+        if (ownConnection) ConnectionManager.create(app) else ConnectionManager.shared(app)
+    private val session = AssistSession(settings, connections)
 
     val state: StateFlow<SessionState> = session.state
 
@@ -29,12 +37,23 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     private var conversation: Job? = null
     private var autoClose: Job? = null
 
-    /** Starts (or restarts) a conversation with a manual turn. */
-    fun startConversation() {
+    /**
+     * Starts (or restarts) a conversation. [fromWakeWord] plays the listening chime first.
+     * The wake-word service is paused while the conversation owns the microphone.
+     */
+    fun startConversation(fromWakeWord: Boolean = false) {
         cancelAutoClose()
-        conversation?.cancel()
+        _closeRequested.value = false
+        val previous = conversation
         conversation = viewModelScope.launch {
-            when (session.converse()) {
+            previous?.cancelAndJoin()
+            val end = try {
+                MicArbiter.beginSession()
+                session.converse(chimeFirst = fromWakeWord)
+            } finally {
+                MicArbiter.endSession()
+            }
+            when (end) {
                 SessionEnd.Completed -> scheduleAutoClose()
                 SessionEnd.FollowUpSilent -> _closeRequested.value = true
                 SessionEnd.Failed -> Unit
@@ -62,6 +81,6 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
-        session.close()
+        if (ownConnection) connections.reset()
     }
 }

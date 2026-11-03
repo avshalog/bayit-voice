@@ -3,6 +3,10 @@ package com.avshy.bayitvoice.config
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.avshy.bayitvoice.wakeword.WakeWordModels
+
+/** How the HA WebSocket is held between sessions (SPEC section 7.3). */
+enum class ConnectionMode { KeepConnected, OnDemand }
 
 /**
  * All user configuration. Non-secret values live in plain preferences;
@@ -52,6 +56,28 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_CHIME, true)
         set(value) = prefs.edit { putBoolean(KEY_CHIME, value) }
 
+    var wakeWordEnabled: Boolean
+        get() = prefs.getBoolean(KEY_WAKE_ENABLED, false)
+        set(value) = prefs.edit { putBoolean(KEY_WAKE_ENABLED, value) }
+
+    var wakeModelId: String
+        get() = prefs.getString(KEY_WAKE_MODEL, null) ?: WakeWordModels.DEFAULT_MODEL_ID
+        set(value) = prefs.edit { putString(KEY_WAKE_MODEL, value) }
+
+    /** Detection threshold for the wake-word score, 0..1. */
+    var wakeThreshold: Float
+        get() = prefs.getFloat(KEY_WAKE_THRESHOLD, DEFAULT_WAKE_THRESHOLD)
+        set(value) = prefs.edit { putFloat(KEY_WAKE_THRESHOLD, value.coerceIn(0.05f, 0.95f)) }
+
+    var startOnBoot: Boolean
+        get() = prefs.getBoolean(KEY_START_ON_BOOT, false)
+        set(value) = prefs.edit { putBoolean(KEY_START_ON_BOOT, value) }
+
+    var connectionMode: ConnectionMode
+        get() = prefs.getString(KEY_CONNECTION_MODE, null)
+            ?.let { runCatching { ConnectionMode.valueOf(it) }.getOrNull() } ?: ConnectionMode.KeepConnected
+        set(value) = prefs.edit { putString(KEY_CONNECTION_MODE, value.name) }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -88,6 +114,7 @@ class AppSettings private constructor(context: Context) {
 
     companion object {
         const val DEFAULT_AUTO_CLOSE_SECONDS = 5
+        const val DEFAULT_WAKE_THRESHOLD = 0.5f
 
         private const val KEY_HOME_URL = "home_url"
         private const val KEY_EXTERNAL_URL = "external_url"
@@ -96,6 +123,11 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_PIPELINE = "pipeline_id"
         private const val KEY_AUTO_CLOSE = "auto_close_seconds"
         private const val KEY_CHIME = "chime_enabled"
+        private const val KEY_WAKE_ENABLED = "wake_enabled"
+        private const val KEY_WAKE_MODEL = "wake_model"
+        private const val KEY_WAKE_THRESHOLD = "wake_threshold"
+        private const val KEY_START_ON_BOOT = "start_on_boot"
+        private const val KEY_CONNECTION_MODE = "connection_mode"
         private const val KEY_HA_VERSION = "ha_version"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"
         private const val LEGACY_KEY_URL = "server_url"

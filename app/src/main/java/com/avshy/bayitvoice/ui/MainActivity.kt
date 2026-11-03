@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.R
@@ -53,25 +55,53 @@ import com.avshy.bayitvoice.config.NetworkInfo
 class MainActivity : ComponentActivity() {
 
     private val viewModel: SettingsViewModel by viewModels()
+    private val wakeViewModel: WakeWordViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             BayitTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                SettingsScreen(
-                    state = state,
-                    viewModel = viewModel,
-                    onOpenAssistant = { startActivity(SessionActivity.intent(this)) },
-                )
+                var screen by rememberSaveable { mutableStateOf(Screen.Settings) }
+                BackHandler(enabled = screen != Screen.Settings) { screen = Screen.Settings }
+                LifecycleResumeEffect(Unit) {
+                    wakeViewModel.refresh()
+                    onPauseOrDispose { }
+                }
+                when (screen) {
+                    Screen.Settings -> {
+                        val state by viewModel.state.collectAsStateWithLifecycle()
+                        val wakeState by wakeViewModel.state.collectAsStateWithLifecycle()
+                        SettingsScreen(
+                            state = state,
+                            viewModel = viewModel,
+                            wakeState = wakeState,
+                            wakeViewModel = wakeViewModel,
+                            onOpenAssistant = { startActivity(SessionActivity.intent(this)) },
+                            onOpenGuide = { screen = Screen.Guide },
+                            onOpenAbout = { screen = Screen.About },
+                        )
+                    }
+                    Screen.Guide -> TrainGuideScreen(onBack = { screen = Screen.Settings })
+                    Screen.About -> AboutScreen(onBack = { screen = Screen.Settings })
+                }
             }
         }
     }
+
+    private enum class Screen { Settings, Guide, About }
 }
 
 @Composable
-private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel, onOpenAssistant: () -> Unit) {
+private fun SettingsScreen(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    wakeState: WakeWordUiState,
+    wakeViewModel: WakeWordViewModel,
+    onOpenAssistant: () -> Unit,
+    onOpenGuide: () -> Unit,
+    onOpenAbout: () -> Unit,
+) {
     var token by rememberSaveable { mutableStateOf("") }
     var pendingToken by remember { mutableStateOf("") }
     // Android 17+ needs a runtime grant to reach the home address; test either way.
@@ -188,6 +218,18 @@ private fun SettingsScreen(state: SettingsUiState, viewModel: SettingsViewModel,
                 Text(stringResource(R.string.settings_chime), modifier = Modifier.weight(1f))
                 Switch(checked = state.chimeEnabled, onCheckedChange = viewModel::setChimeEnabled)
             }
+
+            HorizontalDivider()
+            SectionTitle(R.string.settings_section_wake_word)
+            WakeWordSettings(
+                state = wakeState,
+                viewModel = wakeViewModel,
+                hasHomeAddress = state.homeUrl.isNotBlank(),
+                onOpenGuide = onOpenGuide,
+            )
+
+            HorizontalDivider()
+            TextButton(onClick = onOpenAbout) { Text(stringResource(R.string.about_title)) }
         }
     }
 }

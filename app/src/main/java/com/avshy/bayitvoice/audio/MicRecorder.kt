@@ -16,17 +16,8 @@ class MicRecorder {
      * Records until the calling coroutine is cancelled, handing each chunk to [onChunk].
      * The buffer passed to [onChunk] is reused; copy it if it must outlive the call.
      */
-    @SuppressLint("MissingPermission") // Callers check RECORD_AUDIO before starting a session.
     suspend fun record(onChunk: (buffer: ByteArray, length: Int) -> Unit) = withContext(Dispatchers.IO) {
-        val minSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, ENCODING)
-        val record = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            SAMPLE_RATE,
-            CHANNEL,
-            ENCODING,
-            maxOf(minSize, CHUNK_BYTES * 4),
-        )
-        check(record.state == AudioRecord.STATE_INITIALIZED) { "AudioRecord failed to initialize" }
+        val record = open(CHUNK_BYTES * 4)
         val buffer = ByteArray(CHUNK_BYTES)
         try {
             record.startRecording()
@@ -40,6 +31,42 @@ class MicRecorder {
             runCatching { record.stop() }
             record.release()
         }
+    }
+
+    /**
+     * Records until cancelled, handing each full frame of [frameSamples] samples to [onFrame].
+     * The array is reused for every frame; no allocation happens per frame.
+     */
+    suspend fun recordFrames(frameSamples: Int, onFrame: (ShortArray) -> Unit) = withContext(Dispatchers.IO) {
+        val record = open(frameSamples * 2 * 4)
+        val frame = ShortArray(frameSamples)
+        try {
+            record.startRecording()
+            while (true) {
+                var filled = 0
+                while (filled < frameSamples) {
+                    coroutineContext.ensureActive()
+                    val read = record.read(frame, filled, frameSamples - filled)
+                    if (read < 0) error("AudioRecord read failed: $read")
+                    filled += read
+                }
+                onFrame(frame)
+            }
+        } finally {
+            runCatching { record.stop() }
+            record.release()
+        }
+    }
+
+    @SuppressLint("MissingPermission") // Callers check RECORD_AUDIO before recording.
+    private fun open(bufferBytes: Int): AudioRecord {
+        val minSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL, ENCODING)
+        val record = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, SAMPLE_RATE, CHANNEL, ENCODING, maxOf(minSize, bufferBytes))
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            record.release()
+            error("AudioRecord failed to initialize")
+        }
+        return record
     }
 
     companion object {

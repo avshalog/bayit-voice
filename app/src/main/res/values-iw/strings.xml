@@ -56,4 +56,69 @@
     <string name="error_microphone">לא ניתן לפתוח את המיקרופון.</string>
     <string name="error_local_network_denied">לאפליקציה אין הרשאה לגשת למכשירים ברשת המקומית. אפשר אותה בהגדרות האפליקציה (הרשאות ← מכשירים בקרבת מקום / רשת מקומית).</string>
     <string name="error_server">שגיאה מ-Home Assistant: %1$s</string>
+
+    <!-- Wake word settings -->
+    <string name="settings_section_wake_word">מילת הפעלה</string>
+    <string name="wake_enabled">האזן למילת ההפעלה</string>
+    <string name="wake_enabled_help">המיקרופון נשאר פעיל ברקע, עם התראה קבועה. השמע נשאר במכשיר עד שמילת ההפעלה נשמעת.</string>
+    <string name="wake_model">מודל מילת הפעלה</string>
+    <string name="wake_model_builtin">מובנה</string>
+    <string name="wake_model_imported">מיובא</string>
+    <string name="wake_import">ייבוא מודל…</string>
+    <string name="wake_import_name">שם למילת ההפעלה</string>
+    <string name="wake_import_failed">הקובץ אינו מודל openWakeWord תקין (tflite).</string>
+    <string name="wake_model_name">שם</string>
+    <string name="wake_rename">שינוי שם מילת הפעלה</string>
+    <string name="wake_rename_short">שנה שם</string>
+    <string name="wake_train_guide">אמן מילה משלך</string>
+    <string name="wake_threshold">סף זיהוי: %1$s</string>
+    <string name="wake_threshold_help">נמוך יותר = רגיש יותר, אבל יותר הפעלות שגויות. ברירת מחדל 0.50.</string>
+    <string name="wake_over_lock_screen">פתיחה מעל אפליקציות אחרות ומסך הנעילה</string>
+    <string name="wake_battery">מוחרג מאופטימיזציית סוללה</string>
+    <string name="wake_start_on_boot">התחל להאזין כשהמכשיר נדלק</string>
+    <string name="permission_ok">מאושר</string>
+    <string name="permission_missing">לא מאושר. נדרש להאזנה רציפה ואמינה.</string>
+    <string name="permission_allow">אפשר</string>
+    <string name="connection_mode">חיבור ל-Home Assistant</string>
+    <string name="connection_keep">חיבור קבוע</string>
+    <string name="connection_keep_help">תגובה מהירה ביותר. חיבור אחד פתוח במצב המתנה.</string>
+    <string name="connection_on_demand">חיבור לפי צורך</string>
+    <string name="connection_on_demand_help">פעילות רקע מינימלית. התשובה הראשונה מעט איטית יותר.</string>
+    <string name="dialog_ok">אישור</string>
+    <string name="dialog_cancel">ביטול</string>
+    <string name="back">חזרה</string>
+
+    <!-- Notifications -->
+    <string name="channel_listening">האזנה</string>
+    <string name="channel_alerts">עוזר</string>
+    <string name="notification_listening_title">מאזין למילת ההפעלה</string>
+    <string name="notification_listening_text">מילת הפעלה: %1$s</string>
+    <string name="notification_stop">עצור</string>
+    <string name="notification_session_title">מילת ההפעלה זוהתה</string>
+    <string name="notification_session_text">הקש כדי לדבר עם העוזר.</string>
+    <string name="notification_boot_title">התחל להאזין</string>
+    <string name="notification_boot_text">הקש כדי להתחיל להאזין למילת ההפעלה.</string>
+
+    <!-- Training guide -->
+    <string name="guide_title">אימון מילת הפעלה משלך</string>
+    <string name="guide_intro">אפשר ליצור מילת הפעלה לבחירתך, בכל שפה, עם מחברת האימון החינמית של openWakeWord ב-Google Colab. זה לוקח כשעה ולא דורש תכנות.</string>
+    <string name="guide_step_1">פתח את מחברת האימון (בכפתור למטה) והתחבר עם חשבון Google.</string>
+    <string name="guide_step_2">הזן את מילת ההפעלה בשדה המילה (target word). השתמש באותיות לטיניות (ראה טיפים למטה).</string>
+    <string name="guide_step_3">הרץ את התא שמייצר דוגמאות קול והאזן להן. אם זה לא נשמע כמו המילה שלך, שנה את האיות ונסה שוב.</string>
+    <string name="guide_step_4">הרץ את שאר התאים כדי לאמן את המודל. בסיום, הורד את קובץ ה-tflite.</string>
+    <string name="guide_step_5">העתק את הקובץ למכשיר, הקש \"ייבוא מודל…\" בהגדרות ותן לו שם.</string>
+    <string name="guide_open_notebook">פתח את מחברת האימון</string>
+    <string name="guide_tips_title">טיפים למילים שאינן באנגלית</string>
+    <string name="guide_tip_phonetic">כתוב את המילה פונטית באותיות לטיניות, כפי שדובר אנגלית היה קורא אותה.</string>
+    <string name="guide_tip_sounds">הימנע מצלילים שאין באנגלית (למשל ח, או ר גרונית). בחר מילה שנשמעת דומה בלעדיהם.</string>
+    <string name="guide_tip_syllables">העדף 3 עד 4 הברות. מילים קצרות גורמות ליותר הפעלות שגויות.</string>
+    <string name="guide_tip_listen">תמיד האזן לדוגמאות שנוצרו לפני האימון המלא.</string>
+
+    <!-- About -->
+    <string name="about_title">אודות ורישיונות</string>
+    <string name="about_version">גרסה %1$s</string>
+    <string name="about_models_title">מודלים של מילת הפעלה</string>
+    <string name="about_models_license">מודלי מילת ההפעלה המובנים ומודלי המאפיינים של openWakeWord (melspectrogram, embedding) נוצרו על ידי David Scripka (openWakeWord) ומורשים תחת Creative Commons ייחוס-שימוש לא מסחרי-שיתוף זהה 4.0 (CC BY-NC-SA 4.0). אסור להשתמש בהם למטרות מסחריות. הקוד של openWakeWord מורשה תחת Apache 2.0.</string>
+    <string name="about_libraries_title">ספריות</string>
+    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0.</string>
 </resources>

@@ -27,6 +27,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    androidResources {
+        // Wake-word models are memory-mapped straight from the APK.
+        noCompress += "tflite"
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -46,5 +51,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.litert)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

@@ -7,11 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.config.ServerUrl
+import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.ha.HaClient
 import com.avshy.bayitvoice.ha.HaException
 import com.avshy.bayitvoice.ha.HaVersion
 import com.avshy.bayitvoice.ha.PipelineList
 import com.avshy.bayitvoice.ha.Pipeline
+import com.avshy.bayitvoice.service.WakeWordService
 import com.avshy.bayitvoice.session.SessionError
 import com.avshy.bayitvoice.session.toSessionError
 import kotlinx.coroutines.async
@@ -135,6 +137,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             settings.homeUrl = home?.base?.takeIf { homeError == null }
             settings.externalUrl = external?.base?.takeIf { externalError == null }
             settings.accessToken = token
+            onCredentialsChanged()
             val version = (homeResult?.status ?: externalResult?.status) as? ConnectionStatus.Connected
             settings.lastHaVersion = version?.haVersion
             applyPipelines(pipelines)
@@ -181,6 +184,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun signOut() {
         settings.signOut()
+        onCredentialsChanged()
         _state.update {
             it.copy(
                 hasSavedToken = false,
@@ -194,6 +198,12 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val TAG = "SettingsViewModel"
+    }
+
+    /** The kept connection and the service must pick up a new address or token. */
+    private fun onCredentialsChanged() {
+        ConnectionManager.shared(getApplication()).reset()
+        WakeWordService.reload(getApplication())
     }
 
     private class TestResult(val status: ConnectionStatus, val pipelines: PipelineList?)

@@ -1,7 +1,9 @@
 package com.avshy.bayitvoice.ha
 
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,16 +28,18 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
     private var socket: WebSocket? = null
     private var incoming = Channel<Incoming>(Channel.UNLIMITED)
     private var nextId = 1
+    private var closed = CompletableDeferred<Unit>()
 
     var haVersion: String? = null
         private set
 
-    val isConnected: Boolean get() = socket != null
+    val isConnected: Boolean get() = socket != null && !closed.isCompleted
 
     /** Opens the socket and authenticates. Returns the HA version from `auth_ok`. */
     suspend fun connect(webSocketUrl: String, token: String, timeoutMs: Long = CONNECT_TIMEOUT_MS): String {
         close()
         val channel = Channel<Incoming>(Channel.UNLIMITED).also { incoming = it }
+        val closedSignal = CompletableDeferred<Unit>().also { closed = it }
         nextId = 1
         socket = http.newWebSocket(Request.Builder().url(webSocketUrl).build(), object : WebSocketListener() {
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -47,10 +51,12 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 webSocket.close(1000, null)
                 channel.trySend(Incoming.Closed(null))
+                closedSignal.complete(Unit)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 channel.trySend(Incoming.Closed(t))
+                closedSignal.complete(Unit)
             }
         })
 
@@ -122,10 +128,29 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
         return PipelineList(pipelines, result.optString("preferred_pipeline").ifEmpty { null })
     }
 
+    /** HA-level ping/pong: true if the server answered within [timeoutMs]. */
+    suspend fun ping(timeoutMs: Long = PING_TIMEOUT_MS): Boolean =
+        try {
+            withTimeoutOrNull(timeoutMs) {
+                val id = send("ping")
+                while (true) {
+                    val msg = receive()
+                    if (msg.optString("type") == "pong" && msg.optInt("id") == id) break
+                }
+                true
+            } ?: false
+        } catch (e: HaException) {
+            false
+        }
+
+    /** Suspends until the socket closes for any reason. */
+    suspend fun awaitClosed() = closed.await()
+
     fun close() {
         socket?.close(1000, null)
         socket = null
         haVersion = null
+        closed.complete(Unit)
     }
 
     private fun sendJson(json: JSONObject) {
@@ -136,6 +161,7 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
     companion object {
         private const val TAG = "HaClient"
         const val CONNECT_TIMEOUT_MS = 10_000L
+        private const val PING_TIMEOUT_MS = 1_500L
 
         val sharedHttp: OkHttpClient by lazy {
             OkHttpClient.Builder()

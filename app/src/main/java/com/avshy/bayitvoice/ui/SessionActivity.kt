@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.service.SessionLauncher
 import com.avshy.bayitvoice.session.SessionError
 import com.avshy.bayitvoice.session.SessionNotice
 import com.avshy.bayitvoice.session.SessionPhase
@@ -54,9 +55,11 @@ class SessionActivity : ComponentActivity() {
 
     private val viewModel: SessionViewModel by viewModels()
 
+    private var pendingFromWakeWord = false
+
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // The local network permission is optional: without it the external address is used.
-        if (isGranted(Manifest.permission.RECORD_AUDIO)) viewModel.startConversation() else finish()
+        if (isGranted(Manifest.permission.RECORD_AUDIO)) viewModel.startConversation(pendingFromWakeWord) else finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,18 +73,18 @@ class SessionActivity : ComponentActivity() {
                 LaunchedEffect(close) { if (close) finish() }
                 SessionScreen(
                     state = state,
-                    onMic = ::startWithPermission,
+                    onMic = { startWithPermission(fromWakeWord = false) },
                     onClose = ::finish,
                 )
             }
         }
 
-        if (savedInstanceState == null) startWithPermission()
+        if (savedInstanceState == null) startWithPermission(intent.isFromWakeWord())
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        startWithPermission()
+        startWithPermission(intent.isFromWakeWord())
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -89,10 +92,13 @@ class SessionActivity : ComponentActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
-    private fun startWithPermission() {
+    private fun Intent.isFromWakeWord() = getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
+
+    private fun startWithPermission(fromWakeWord: Boolean) {
+        pendingFromWakeWord = fromWakeWord
         val needed = (arrayOf(Manifest.permission.RECORD_AUDIO) + viewModel.localNetworkPermissions())
             .filterNot(::isGranted)
-        if (needed.isEmpty()) viewModel.startConversation() else permissions.launch(needed.toTypedArray())
+        if (needed.isEmpty()) viewModel.startConversation(fromWakeWord) else permissions.launch(needed.toTypedArray())
     }
 
     private fun isGranted(permission: String) =
