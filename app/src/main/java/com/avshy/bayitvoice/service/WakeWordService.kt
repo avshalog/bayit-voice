@@ -5,6 +5,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.AudioRecordingConfiguration
+import android.os.Build
 import android.os.Debug
 import android.os.IBinder
 import android.os.Process
@@ -50,6 +53,8 @@ class WakeWordService : Service() {
     private var connection: Job? = null
     private var engine: WakeWordEngine? = null
     private var detector: WakeWordDetector? = null
+    private var currentModelName: String? = null
+    @Volatile private var micSilenced = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -71,6 +76,7 @@ class WakeWordService : Service() {
     }
 
     override fun onDestroy() {
+        getSystemService(AudioManager::class.java).unregisterAudioRecordingCallback(recordingCallback)
         // Wait (at most one 80 ms frame) for capture to stop before freeing the native models.
         runBlocking { listening?.cancelAndJoin() }
         scope.cancel()
@@ -163,7 +169,10 @@ class WakeWordService : Service() {
         return NotificationCompat.Builder(this, Notifications.CHANNEL_LISTENING)
             .setSmallIcon(R.drawable.ic_mic)
             .setContentTitle(getString(R.string.notification_listening_title))
-            .setContentText(modelName?.let { getString(R.string.notification_listening_text, it) })
+            .setContentText(
+                if (micSilenced) getString(R.string.notification_mic_busy)
+                else modelName?.let { getString(R.string.notification_listening_text, it) }
+            )
             .setContentIntent(open)
             .addAction(0, getString(R.string.notification_stop), stop)
             .setOngoing(true)
@@ -172,8 +181,31 @@ class WakeWordService : Service() {
     }
 
     private fun updateNotification(modelName: String) {
+        currentModelName = modelName
         getSystemService(android.app.NotificationManager::class.java)
             .notify(Notifications.ID_LISTENING, buildNotification(modelName))
+    }
+
+    /**
+     * Android gives the microphone to one capturing app at a time; others receive silence.
+     * Watch for that (e.g. another assistant's wake word) and say so in the notification.
+     */
+    private val recordingCallback = object : AudioManager.AudioRecordingCallback() {
+        override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+            // Only this app's own recordings are reported with their silenced state.
+            val silenced = configs.any { it.isClientSilenced }
+            if (silenced == micSilenced) return
+            micSilenced = silenced
+            Log.w(TAG, if (silenced) "Microphone silenced: another app is capturing" else "Microphone available again")
+            getSystemService(android.app.NotificationManager::class.java)
+                .notify(Notifications.ID_LISTENING, buildNotification(currentModelName))
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        getSystemService(AudioManager::class.java).registerAudioRecordingCallback(recordingCallback, null)
     }
 
     /** Debug builds: log CPU share, memory and how often the heavy models run. */

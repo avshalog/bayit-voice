@@ -97,6 +97,7 @@
     <string name="notification_listening_title">Listening for the wake word</string>
     <string name="notification_listening_text">Wake word: %1$s</string>
     <string name="notification_stop">Stop</string>
+    <string name="notification_mic_busy">Paused: another app is using the microphone (for example another assistant with a wake word).</string>
     <string name="notification_session_title">Wake word heard</string>
     <string name="notification_session_text">Tap to talk to the assistant.</string>
     <string name="notification_boot_title">Start listening</string>

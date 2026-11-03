@@ -21,9 +21,9 @@ class OpenWakeWordEngine(
 
     private val options = Interpreter.Options().setNumThreads(1).setUseXNNPACK(true)
 
-    // XNNPACK cannot reshape the melspectrogram graph after its input is resized
-    // ("XNNPack delegate failed to reshape runtime"); this small model runs on the default kernels.
-    private val mel = Interpreter(melModel, Interpreter.Options().setNumThreads(1).setUseXNNPACK(false))
+    // The melspectrogram model stores a placeholder [1, 1] input that cannot be prepared;
+    // load it with the real fixed input shape so it never needs resizing.
+    private val mel = createMelInterpreter(TfliteShapes.withInputShape(melModel, intArrayOf(1, MEL_INPUT_SAMPLES)))
     private val embedding = Interpreter(embeddingModel, options)
     private val wake = Interpreter(wakeModel, options)
 
@@ -45,8 +45,6 @@ class OpenWakeWordEngine(
     private var framesSinceReset = 0
 
     init {
-        mel.resizeInput(0, intArrayOf(1, MEL_INPUT_SAMPLES))
-        mel.allocateTensors()
         melFramesPerChunk = mel.getOutputTensor(0).shape().let { it[it.size - 2] }
         melOut = TensorBuffer(melFramesPerChunk * MEL_BINS)
 
@@ -58,6 +56,8 @@ class OpenWakeWordEngine(
         featureRing = FloatArray(featureFrames * EMBEDDING_SIZE)
         wakeIn = TensorBuffer(featureFrames * EMBEDDING_SIZE)
         Log.i(TAG, "Loaded: $melFramesPerChunk mel frames/chunk, $featureFrames feature frames")
+        // Run one silent frame through all three models so shape problems surface at load time.
+        process(ShortArray(FRAME_SAMPLES))
         reset()
     }
 
@@ -108,6 +108,15 @@ class OpenWakeWordEngine(
         embedding.close()
         wake.close()
     }
+
+    /** XNNPACK when it can prepare the graph, otherwise the default kernels. */
+    private fun createMelInterpreter(model: ByteBuffer): Interpreter =
+        try {
+            Interpreter(model, options)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Melspectrogram model without XNNPACK: ${e.message}")
+            Interpreter(model, Interpreter.Options().setNumThreads(1).setUseXNNPACK(false))
+        }
 
     /** A direct buffer handed to the interpreter, with a float view for reading and writing. */
     private class TensorBuffer(size: Int) {
