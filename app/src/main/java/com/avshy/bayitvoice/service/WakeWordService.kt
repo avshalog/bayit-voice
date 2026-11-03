@@ -122,7 +122,13 @@ class WakeWordService : Service() {
                 return@launch
             }
             engine = newEngine
-            val newDetector = WakeWordDetector(newEngine, settings.wakeThreshold) { score -> onWakeWord(score) }
+            val newDetector = WakeWordDetector(
+                engine = newEngine,
+                threshold = settings.wakeThreshold,
+                onDetected = ::onWakeWord,
+                // Debug builds log near misses, to tune the threshold or retrain a model.
+                onUtteranceEnd = if (BuildConfig.DEBUG) { peak -> if (peak >= 0.05f) Log.d(TAG, "utterance peak score %.2f".format(peak)) } else null,
+            )
             detector = newDetector
             Log.i(TAG, "Listening for '${model.name}' (threshold ${settings.wakeThreshold})")
             if (BuildConfig.DEBUG) launch { logStats(newDetector) }

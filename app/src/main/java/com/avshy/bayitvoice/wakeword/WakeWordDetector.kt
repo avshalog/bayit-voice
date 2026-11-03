@@ -11,7 +11,10 @@ class WakeWordDetector(
     private val engine: WakeWordEngine,
     @Volatile var threshold: Float,
     private val onDetected: (score: Float) -> Unit,
+    /** Called when the voice gate closes, with the highest score seen while it was open (tuning aid). */
+    private val onUtteranceEnd: ((peakScore: Float) -> Unit)? = null,
 ) {
+    private var peakScore = 0f
     private val vad = EnergyVad()
     private val preRoll = Array(PRE_ROLL_FRAMES) { ShortArray(engine.frameSamples) }
     private var preRollStart = 0
@@ -37,13 +40,17 @@ class WakeWordDetector(
                 return
             }
             gateOpen = true
+            peakScore = 0f
             engine.reset()
             for (i in 0 until preRollCount) score(preRoll[(preRollStart + i) % PRE_ROLL_FRAMES])
             preRollCount = 0
         }
         hangover = if (voice) HANGOVER_FRAMES else hangover - 1
         score(frame)
-        if (hangover <= 0) gateOpen = false
+        if (hangover <= 0) {
+            gateOpen = false
+            onUtteranceEnd?.invoke(peakScore)
+        }
     }
 
     /**
@@ -61,6 +68,7 @@ class WakeWordDetector(
     private fun score(frame: ShortArray) {
         framesProcessed++
         val score = engine.process(frame)
+        if (score > peakScore) peakScore = score
         if (score < threshold) return
         val now = SystemClock.elapsedRealtime()
         if (now - lastDetectionAt < COOLDOWN_MS) return
