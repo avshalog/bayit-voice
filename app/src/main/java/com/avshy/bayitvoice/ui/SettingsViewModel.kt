@@ -134,10 +134,13 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
             // Save only addresses that are valid; an unreachable address is still kept, since
             // it may simply be unreachable from where the device is right now.
-            settings.homeUrl = home?.base?.takeIf { homeError == null }
-            settings.externalUrl = external?.base?.takeIf { externalError == null }
+            val newHome = home?.base?.takeIf { homeError == null }
+            val newExternal = external?.base?.takeIf { externalError == null }
+            val changed = newHome != settings.homeUrl || newExternal != settings.externalUrl || token != settings.accessToken
+            settings.homeUrl = newHome
+            settings.externalUrl = newExternal
             settings.accessToken = token
-            onCredentialsChanged()
+            if (changed) onCredentialsChanged()
             val version = (homeResult?.status ?: externalResult?.status) as? ConnectionStatus.Connected
             settings.lastHaVersion = version?.haVersion
             applyPipelines(pipelines)

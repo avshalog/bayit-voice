@@ -260,13 +260,16 @@ class AssistSession(
 
         private val sender = scope.launch {
             val id = handlerId.await()
-            runCatching {
+            try {
                 for (frame in chunks) {
                     frame[0] = id
                     client.sendBinary(frame.toByteString())
                 }
                 client.sendBinary(byteArrayOf(id).toByteString())
-            }.onFailure { Log.w(TAG, "Audio send stopped: ${it.javaClass.simpleName}") }
+            } catch (e: HaException) {
+                // The receive loop reports the dropped connection; just stop sending.
+                Log.w(TAG, "Audio send stopped: ${e.javaClass.simpleName}")
+            }
         }
 
         fun start(id: Byte) {
