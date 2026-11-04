@@ -123,8 +123,12 @@ class WakeWordModels(context: Context) {
 
         const val DEFAULT_MODEL_ID = "builtin:hey_jarvis"
 
-        /** openWakeWord pre-trained models (CC BY-NC-SA 4.0), shipped in assets. */
+        /**
+         * Shipped in assets: openWakeWord's pre-trained models (CC BY-NC-SA 4.0), and the project's
+         * own "היי בית" model, trained with tools/wake_word_training on the same openWakeWord data.
+         */
         val BUILT_IN = listOf(
+            builtIn("hey_bayit", "היי בית"),
             builtIn("alexa", "Alexa"),
             builtIn("hey_jarvis", "Hey Jarvis"),
             builtIn("hey_mycroft", "Hey Mycroft"),

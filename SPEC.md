@@ -175,6 +175,10 @@ When `continue_conversation == true`, for example a clarifying question or a con
 - Engine: openWakeWord. The pipeline is three TFLite models: `melspectrogram.tflite` → `embedding_model.tflite` → a wake-word model. Each audio frame is 80 ms (1,280 samples at 16 kHz).
 - Models:
   - Bundle a few of openWakeWord's pre-trained models as built-in choices. Check their license before bundling: the pre-trained models are distributed under a non-commercial license (verify), which must be stated in the app's About screen.
+  - Also bundle the project's own Hebrew "היי בית" model (`hey_bayit_v0.1.tflite`), trained with `tools/wake_word_training`, as one more built-in choice.
+    - It is an option, not the default; the default stays a neutral pre-trained model.
+    - It is trained on the same openWakeWord data, so the same non-commercial terms apply.
+    - A retrained version replaces the asset under a new version suffix.
   - Let the user import their own `.tflite` model via the system file picker, with a display name, and switch between installed models at any time. Imported models can be renamed or deleted.
 
 ### 6.1 User-trained wake words
