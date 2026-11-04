@@ -64,6 +64,6 @@ object SpeechLevel {
         override fun onFftDataCapture(v: Visualizer, fft: ByteArray, samplingRate: Int) = Unit
     }
 
-    /** Speech RMS rarely passes 0.3; this maps it onto the full bar height. */
-    private const val LEVEL_GAIN = 3.2
+    /** Maps speech RMS onto the bar height; tuned on a phone so only stressed syllables reach the top. */
+    private const val LEVEL_GAIN = 2.0
 }
