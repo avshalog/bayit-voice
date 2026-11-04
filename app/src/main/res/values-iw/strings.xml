@@ -37,12 +37,13 @@
     <!-- Session -->
     <string name="session_close">סגור</string>
     <string name="session_mic">דבר</string>
+    <string name="session_speak_again">דבר שוב</string>
+    <string name="session_try_again">נסה שוב</string>
     <string name="phase_idle">מוכן</string>
-    <string name="phase_connecting">מתחבר…</string>
-    <string name="phase_listening">מקשיב…</string>
-    <string name="phase_thinking">חושב…</string>
-    <string name="phase_speaking">מדבר…</string>
-    <string name="phase_done">בוצע</string>
+    <string name="phase_connecting">מתחבר</string>
+    <string name="phase_listening">מקשיב</string>
+    <string name="phase_thinking">חושב</string>
+    <string name="phase_speaking">בית</string>
     <string name="phase_error">משהו השתבש</string>
 
     <!-- Errors -->

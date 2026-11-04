@@ -128,11 +128,16 @@ A pipeline may have no TTS engine. Then there is no `tts-end`; show the reply te
 
 ### 5.1 Session UI
 
-A full-screen (or large bottom-sheet) Activity that shows:
+A translucent Activity that shows a dark bottom sheet, about a third of the screen tall, over whatever is on screen. It slides up when it opens and slides down when it closes. Tapping the dimmed area above it closes it.
 
-- A state indicator: listening / thinking / speaking / done / error.
-- The recognized user text and the assistant's reply text, with direction (LTR/RTL) taken from the text itself.
-- A mic button to start or restart a turn manually, and a close button.
+- **Status row:** a small animated icon per state, the state's name and a close button.
+  - The states are connecting / listening / thinking / speaking / done / error.
+  - While speaking and when done, the label is the assistant's name ("Home"). When done, its icon becomes a check mark that animates in once.
+  - Listening and thinking add three bouncing dots after the label.
+- **Conversation:** the recognized user text in a speech bubble, then the assistant's reply text. Each text's direction (LTR/RTL) comes from the text itself.
+- **Bottom slot** (fixed height, so the sheet does not jump):
+  - While the reply plays, a waveform scrolls in from the right edge. It follows the reply's loudness (`Visualizer` on the player's audio session), or a generic speech pattern when the device refuses.
+  - After a turn: a "Speak again" mic button. After an error: "Try again". The mic button is hidden while a turn is running.
 
 The UI must work over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), since the device usually sits idle with its screen off.
 

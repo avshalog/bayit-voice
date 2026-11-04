@@ -9,53 +9,48 @@ import android.os.Bundle
 import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.service.SessionLauncher
 import com.avshy.bayitvoice.session.SessionError
-import com.avshy.bayitvoice.session.SessionNotice
-import com.avshy.bayitvoice.session.SessionPhase
-import com.avshy.bayitvoice.session.SessionState
+import kotlinx.coroutines.flow.first
 
-/** Full-screen conversation UI; works over the lock screen. */
+/** The conversation UI: a sheet over whatever is on screen, including the lock screen. */
 class SessionActivity : ComponentActivity() {
 
     private val viewModel: SessionViewModel by viewModels()
 
     private var pendingFromWakeWord = false
+
+    /** Drives the sheet's slide in and out; the activity finishes once it has slid out. */
+    private val sheetVisible = MutableTransitionState(false).apply { targetState = true }
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // The local network permission is optional: without it the external address is used.
@@ -63,18 +58,28 @@ class SessionActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         showOverLockScreen()
 
         setContent {
-            BayitTheme {
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                val close by viewModel.closeRequested.collectAsStateWithLifecycle()
-                LaunchedEffect(close) { if (close) finish() }
-                SessionScreen(
+            val state by viewModel.state.collectAsStateWithLifecycle()
+            val close by viewModel.closeRequested.collectAsStateWithLifecycle()
+            LaunchedEffect(close) { if (close) dismiss() }
+            LaunchedEffect(Unit) {
+                // Finish once the sheet has fully slid out.
+                snapshotFlow { sheetVisible.isIdle && !sheetVisible.currentState && !sheetVisible.targetState }.first { it }
+                finish()
+            }
+            BackHandler { dismiss() }
+            SessionOverlay(
+                visible = sheetVisible,
+                onDismiss = ::dismiss,
+            ) {
+                SessionSheet(
                     state = state,
                     onMic = { startWithPermission(fromWakeWord = false) },
-                    onClose = ::finish,
+                    onClose = ::dismiss,
                 )
             }
         }
@@ -84,12 +89,17 @@ class SessionActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        sheetVisible.targetState = true
         startWithPermission(intent.isFromWakeWord())
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) viewModel.cancelAutoClose()
         return super.dispatchTouchEvent(ev)
+    }
+
+    private fun dismiss() {
+        sheetVisible.targetState = false
     }
 
     private fun Intent.isFromWakeWord() = getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
@@ -121,98 +131,46 @@ class SessionActivity : ComponentActivity() {
     }
 }
 
+/** A dimmed backdrop (tap to close) with the sheet sliding up from the bottom edge. */
 @Composable
-private fun SessionScreen(state: SessionState, onMic: () -> Unit, onClose: () -> Unit) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp)) {
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd)) {
-                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.session_close))
-            }
-
-            Column(
-                modifier = Modifier.fillMaxWidth().align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                PhaseIndicator(state.phase)
-
-                if (state.userText.isNotEmpty()) {
-                    Text(
-                        text = state.userText,
-                        style = MaterialTheme.typography.titleLarge.copy(textDirection = TextDirection.Content),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                if (state.replyText.isNotEmpty()) {
-                    Text(
-                        text = state.replyText,
-                        style = MaterialTheme.typography.headlineSmall.copy(textDirection = TextDirection.Content),
-                        color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                state.error?.let {
-                    Text(
-                        text = errorText(it),
-                        style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                state.notice?.let {
-                    Text(
-                        text = stringResource(
-                            when (it) {
-                                SessionNotice.PipelineMissing -> R.string.notice_pipeline_missing
-                                SessionNotice.OldHaVersion -> R.string.notice_old_ha_version
-                            }
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-
-            val busy = state.phase in setOf(SessionPhase.Connecting, SessionPhase.Listening, SessionPhase.Thinking)
-            FilledIconButton(
-                onClick = onMic,
-                enabled = !busy,
-                modifier = Modifier.align(Alignment.BottomCenter).size(88.dp),
-            ) {
-                Icon(painterResource(R.drawable.ic_mic), contentDescription = stringResource(R.string.session_mic), modifier = Modifier.size(40.dp))
-            }
+private fun SessionOverlay(visible: MutableTransitionState<Boolean>, onDismiss: () -> Unit, sheet: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visibleState = visible, enter = fadeIn(tween(250)), exit = fadeOut(tween(260))) {
+            Box(
+                Modifier.fillMaxSize()
+                    .background(SessionColors.scrim)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+            )
         }
+        AnimatedVisibility(
+            visibleState = visible,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(tween(320)) { it },
+            exit = slideOutVertically(tween(260)) { it },
+        ) { sheet() }
     }
 }
 
-@Composable
-private fun PhaseIndicator(phase: SessionPhase) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        if (phase == SessionPhase.Connecting || phase == SessionPhase.Thinking) {
-            CircularProgressIndicator()
-            Spacer(Modifier.height(12.dp))
-        }
-        val label = when (phase) {
-            SessionPhase.Idle -> R.string.phase_idle
-            SessionPhase.Connecting -> R.string.phase_connecting
-            SessionPhase.Listening -> R.string.phase_listening
-            SessionPhase.Thinking -> R.string.phase_thinking
-            SessionPhase.Speaking -> R.string.phase_speaking
-            SessionPhase.Done -> R.string.phase_done
-            SessionPhase.Error -> R.string.phase_error
-        }
-        Text(stringResource(label), style = MaterialTheme.typography.headlineMedium)
-    }
+/** Fixed dark colours: the sheet looks the same over any wallpaper and in either system theme. */
+object SessionColors {
+    val scrim = Color(0x59080A0C)
+    val sheet = Color(0xFF1C1D22)
+    val handle = Color(0xFF45484F)
+    val raised = Color(0xFF2A2C33)
+    val text = Color(0xFFECEDF0)
+    val reply = Color(0xFFF5F6F8)
+    val muted = Color(0xFFC9CCD3)
+    val accent = Color(0xFF7FA6FF)
+    val onAccent = Color(0xFF0E1013)
+    val done = Color(0xFF5CCB8A)
+    val error = Color(0xFFFFB4AB)
 }
 
 @Composable
 internal fun errorText(error: SessionError): String = when (error) {
     SessionError.NotConfigured -> stringResource(R.string.error_not_configured)
     SessionError.InvalidUrl -> stringResource(R.string.error_invalid_url)
-    SessionError.InsecureUrl ->stringResource(R.string.error_insecure_url)
+    SessionError.InsecureUrl -> stringResource(R.string.error_insecure_url)
     SessionError.AuthInvalid -> stringResource(R.string.error_auth_invalid)
     SessionError.Unreachable -> stringResource(R.string.error_unreachable)
     SessionError.Disconnected -> stringResource(R.string.error_disconnected)

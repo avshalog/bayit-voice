@@ -39,12 +39,13 @@
     <!-- Session -->
     <string name="session_close">Close</string>
     <string name="session_mic">Speak</string>
+    <string name="session_speak_again">Speak again</string>
+    <string name="session_try_again">Try again</string>
     <string name="phase_idle">Ready</string>
-    <string name="phase_connecting">Connecting…</string>
-    <string name="phase_listening">Listening…</string>
-    <string name="phase_thinking">Thinking…</string>
-    <string name="phase_speaking">Speaking…</string>
-    <string name="phase_done">Done</string>
+    <string name="phase_connecting">Connecting</string>
+    <string name="phase_listening">Listening</string>
+    <string name="phase_thinking">Thinking</string>
+    <string name="phase_speaking">Home</string>
     <string name="phase_error">Something went wrong</string>
 
     <!-- Errors -->
