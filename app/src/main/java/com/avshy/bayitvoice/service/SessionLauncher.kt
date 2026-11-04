@@ -47,6 +47,10 @@ object SessionLauncher {
         notify(context, Notifications.ID_BOOT, intent, R.string.notification_boot_title, R.string.notification_boot_text, fullScreen = false)
     }
 
+    /** The session started by the system's assistant gesture: hands-free, like the wake word. */
+    fun assistIntent(context: Context): Intent =
+        activityIntent(context, SESSION_ACTIVITY).setAction(Intent.ACTION_ASSIST)
+
     fun mainActivityIntent(context: Context): Intent =
         activityIntent(context, MAIN_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

@@ -141,7 +141,12 @@ A translucent Activity that shows a dark bottom sheet, about a third of the scre
 
 The UI must work over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), since the device usually sits idle with its screen off.
 
-The session Activity also handles `android.intent.action.ASSIST`, so the user can choose the app as the device's digital assistant (Settings → Apps → Default apps → Digital assistant app). The system's assistant gesture (side key, long-press home) then opens a hands-free session, just like the wake word: chime first, close on silence.
+The user can choose the app as the device's digital assistant (Settings → Apps → Default apps → Digital assistant app; on Samsung, also Side key → Press and hold). The system's assistant gesture (side key, long-press home) then opens a hands-free session, just like the wake word: chime first, close on silence.
+
+- Android lists only apps that provide a `VoiceInteractionService`. An activity that handles `ACTION_ASSIST` is not enough.
+- The app therefore declares a minimal voice-interaction service, a session service and a stub `RecognitionService`, which the declaration requires. All of them hold no UI.
+- When invoked, the session opens the normal session Activity with `startAssistantActivity`; from the lock screen it uses `onLaunchVoiceAssistFromKeyguard`.
+- The session Activity also handles `android.intent.action.ASSIST` directly.
 
 ### 5.2 Auto-close
 
