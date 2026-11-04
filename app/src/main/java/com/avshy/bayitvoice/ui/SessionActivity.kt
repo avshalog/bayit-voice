@@ -60,6 +60,8 @@ class SessionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // The sheet's own colour runs under the navigation bar; no system scrim over it.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         showOverLockScreen()
 
         setContent {
