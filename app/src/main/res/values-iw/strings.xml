@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Bayit Voice</string>
+    <string name="app_name">היי בית</string>
 
     <!-- Settings -->
     <string name="settings_open_assistant">דבר עם העוזר</string>

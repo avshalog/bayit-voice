@@ -102,7 +102,9 @@ class SessionActivity : ComponentActivity() {
         sheetVisible.targetState = false
     }
 
-    private fun Intent.isFromWakeWord() = getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
+    /** The wake word and the system's assistant gesture both start hands-free: chime first, close on silence. */
+    private fun Intent.isFromWakeWord() =
+        action == Intent.ACTION_ASSIST || getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
 
     private fun startWithPermission(fromWakeWord: Boolean) {
         pendingFromWakeWord = fromWakeWord

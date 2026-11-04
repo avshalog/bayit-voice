@@ -141,6 +141,8 @@ A translucent Activity that shows a dark bottom sheet, about a third of the scre
 
 The UI must work over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), since the device usually sits idle with its screen off.
 
+The session Activity also handles `android.intent.action.ASSIST`, so the user can choose the app as the device's digital assistant (Settings → Apps → Default apps → Digital assistant app). The system's assistant gesture (side key, long-press home) then opens a hands-free session, just like the wake word: chime first, close on silence.
+
 ### 5.2 Auto-close
 
 - After a **successful** turn with `continue_conversation == false`: wait for TTS playback to finish, then close the UI after the configured delay.

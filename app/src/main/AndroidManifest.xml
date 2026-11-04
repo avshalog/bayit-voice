@@ -42,9 +42,15 @@
             android:name=".ui.SessionActivity"
             android:theme="@style/Theme.BayitVoice.Session"
             android:excludeFromRecents="true"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTask"
-            android:taskAffinity=".session" />
+            android:taskAffinity=".session">
+            <!-- Lets the user pick the app as the device's digital assistant (side key, long-press home). -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".ui.StartListeningActivity"
