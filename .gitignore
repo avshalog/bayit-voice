@@ -13,3 +13,5 @@
 *.keystore
 # Developer test values (never commit credentials)
 /secrets.properties
+# Personal voice recordings for wake-word training
+/recordings/
