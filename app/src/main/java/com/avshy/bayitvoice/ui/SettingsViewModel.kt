@@ -28,6 +28,9 @@ sealed interface ConnectionStatus {
     data object Testing : ConnectionStatus
     data class Connected(val haVersion: String, val supportsFollowUp: Boolean) : ConnectionStatus
     data class Failed(val error: SessionError) : ConnectionStatus
+
+    /** The home address is unreachable but the external one works: normal away from home. */
+    data object AwayFromHome : ConnectionStatus
 }
 
 data class SettingsUiState(
@@ -123,10 +126,12 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             val externalTest = async { if (externalError == null && external != null) test(external, token) else null }
             val homeResult = homeTest.await()
             val externalResult = externalTest.await()
+            val awayFromHome = (homeResult?.status as? ConnectionStatus.Failed)?.error == SessionError.Unreachable &&
+                externalResult?.status is ConnectionStatus.Connected
 
             _state.update {
                 it.copy(
-                    homeStatus = homeResult?.status ?: it.homeStatus,
+                    homeStatus = if (awayFromHome) ConnectionStatus.AwayFromHome else homeResult?.status ?: it.homeStatus,
                     externalStatus = externalResult?.status ?: it.externalStatus,
                 )
             }

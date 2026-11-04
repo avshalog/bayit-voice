@@ -21,6 +21,7 @@
     <string name="settings_sign_out">התנתק</string>
     <string name="settings_testing">מתחבר…</string>
     <string name="settings_connected">מחובר. Home Assistant %1$s</string>
+    <string name="settings_away_from_home">לא נגיש מהרשת הנוכחית. זה תקין כשאתה מחוץ לבית: משתמשים בכתובת החיצונית.</string>
     <string name="settings_section_pipeline">צינור Assist</string>
     <string name="settings_pipeline_default">ברירת מחדל (הצינור המועדף ב-HA)</string>
     <string name="settings_pipeline_currently">כרגע: %1$s</string>

@@ -274,6 +274,11 @@ private fun ConnectionStatusText(status: ConnectionStatus) {
         is ConnectionStatus.Connected ->
             Text(stringResource(R.string.settings_connected, status.haVersion), color = MaterialTheme.colorScheme.primary)
         is ConnectionStatus.Failed -> Text(errorText(status.error), color = MaterialTheme.colorScheme.error)
+        ConnectionStatus.AwayFromHome -> Text(
+            stringResource(R.string.settings_away_from_home),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

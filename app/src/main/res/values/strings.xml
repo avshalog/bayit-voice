@@ -23,6 +23,7 @@
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_testing">Connecting…</string>
     <string name="settings_connected">Connected. Home Assistant %1$s</string>
+    <string name="settings_away_from_home">Not reachable from this network. That is normal away from home: the external address is used.</string>
     <string name="settings_section_pipeline">Assist pipeline</string>
     <string name="settings_pipeline_default">Default (HA preferred pipeline)</string>
     <string name="settings_pipeline_currently">Currently: %1$s</string>
