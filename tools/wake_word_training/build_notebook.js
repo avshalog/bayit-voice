@@ -20,20 +20,44 @@ Trains an [openWakeWord](https://github.com/dscripka/openWakeWord) model from sy
 
 **Tips**
 - Give several spellings of the same sound: they make the synthetic voices say it in different ways. For "היי בית": \`hey bah eet\`, \`hey baayit\`, \`hey baayeet\`.
-- Words the English dictionary lacks need a pronunciation in ARPAbet (\`AA\` as in "father", \`IY\` as in "see", \`IH\` as in "sit"; 1 = stressed, 0 = unstressed). The run stops early and names any word that is missing one.`),
+- Words the English dictionary lacks need a pronunciation in ARPAbet (\`AA\` as in "father", \`IY\` as in "see", \`IH\` as in "sit"; 1 = stressed, 0 = unstressed). The run stops early and names any word that is missing one.
+- Real recordings of the phrase help most with real voices. Cut them into one 16 kHz clip per utterance with \`tools/wake_word_training/split_recordings.js\`, zip the clips, and tick **USE_REAL_CLIPS**: the second cell asks for the zip. A fifth of them is kept out of training, and the run ends with the model's recall on those.`),
   code(`#@title Your wake word
 PHRASES = '["hey jarvis"]'  #@param {type:"string"}
 MODEL_NAME = "hey_jarvis"  #@param {type:"string"}
 PRONUNCIATIONS = '{}'  #@param {type:"string"}
 N_SAMPLES = 10000  #@param {type:"integer"}
 STEPS = 15000  #@param {type:"integer"}
+USE_REAL_CLIPS = False  #@param {type:"boolean"}
+REAL_REPEAT = 15  #@param {type:"integer"}
 
 import json, os, re
 json.loads(PHRASES); json.loads(PRONUNCIATIONS)  # fail early on a typo
 assert re.fullmatch(r"[A-Za-z0-9_]+", MODEL_NAME), "MODEL_NAME: letters, digits and underscores only"
 os.environ.update(PHRASES=PHRASES, MODEL_NAME=MODEL_NAME, PRONUNCIATIONS=PRONUNCIATIONS,
-                  N_SAMPLES=str(N_SAMPLES), STEPS=str(STEPS), WORKDIR="/content")
+                  N_SAMPLES=str(N_SAMPLES), STEPS=str(STEPS), REAL_REPEAT=str(REAL_REPEAT), WORKDIR="/content")
+os.environ.pop("REAL_CLIPS", None)
 print("ok")`, { cellView: "form" }),
+  code(`#@title Upload real clips (only with USE_REAL_CLIPS)
+import os, shutil, zipfile
+if USE_REAL_CLIPS:
+    from google.colab import files
+    print("Choose a .zip of 16 kHz mono WAV clips, one utterance each")
+    uploaded = files.upload()
+    shutil.rmtree("/content/real_clips", ignore_errors=True)
+    os.makedirs("/content/real_clips")
+    for name in uploaded:
+        with zipfile.ZipFile(name) as z:
+            for member in z.namelist():
+                if member.lower().endswith(".wav") and not member.startswith("__MACOSX"):
+                    with z.open(member) as src, open(os.path.join("/content/real_clips", os.path.basename(member)), "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+    n = len(os.listdir("/content/real_clips"))
+    assert n > 0, "No .wav files in the zip"
+    os.environ["REAL_CLIPS"] = "/content/real_clips"
+    print(n, "real clips ready")
+else:
+    print("synthetic only")`, { cellView: "form" }),
   md("The training script (the same file as `tools/wake_word_training/train_wake_word.sh` in the app's repository)."),
   // %%writefile must be the first line of its cell.
   code(`%%writefile /content/train_wake_word.sh\n${script}`),
@@ -42,7 +66,7 @@ import subprocess, sys
 proc = subprocess.Popen(["bash", "/content/train_wake_word.sh"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 result = None
 for line in proc.stdout:
-    if line.startswith(("===", "FINISHED", "FAILED")) or "accuracy" in line.lower() or "recall" in line.lower() or "retrying" in line:
+    if line.startswith(("===", "FINISHED", "FAILED")) or any(w in line.lower() for w in ("accuracy", "recall", "retrying", "real clips", "held out")):
         print(line, end="", flush=True)
     if line.startswith(("FINISHED", "FAILED")):
         result = line.strip()

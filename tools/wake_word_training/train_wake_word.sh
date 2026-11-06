@@ -11,6 +11,11 @@
 #   STEPS            training steps (default 15000)
 #   WORKDIR          working directory (default /content on Colab, else ./oww-work)
 #   ACAV_FRACTION    1 = all negative features; 3 = a third (default: retry with 3 if training dies)
+#   REAL_CLIPS       folder of real recordings of the phrase: 16 kHz mono WAV, one utterance each
+#                    (split_recordings.js makes them). Optional; without it training is synthetic only.
+#   REAL_REPEAT      how many times each real clip joins the training set, each time with its own
+#                    noise and room echo (default 15)
+#   REAL_HOLDOUT     share of real clips kept out of training to measure recall on real voices (default 0.2)
 #
 # Each step prints "=== STEP <name>". The run ends with "FINISHED <path>" or "FAILED <step>".
 set -o pipefail
@@ -20,8 +25,13 @@ set -o pipefail
 PRONUNCIATIONS="${PRONUNCIATIONS:-{\}}"
 N_SAMPLES="${N_SAMPLES:-10000}"
 STEPS="${STEPS:-15000}"
+REAL_REPEAT="${REAL_REPEAT:-15}"
+REAL_HOLDOUT="${REAL_HOLDOUT:-0.2}"
+if [ -n "$REAL_CLIPS" ]; then
+  REAL_CLIPS="$(cd "$REAL_CLIPS" 2>/dev/null && pwd)" || { echo "FAILED setup: REAL_CLIPS folder not found"; exit 1; }
+fi
 if [ -z "$WORKDIR" ]; then [ -d /content ] && WORKDIR=/content || WORKDIR="$PWD/oww-work"; fi
-export PHRASES MODEL_NAME PRONUNCIATIONS N_SAMPLES STEPS
+export PHRASES MODEL_NAME PRONUNCIATIONS N_SAMPLES STEPS REAL_CLIPS REAL_REPEAT REAL_HOLDOUT
 
 mkdir -p "$WORKDIR" && cd "$WORKDIR" || exit 1
 step() { echo "=== STEP $1 $(date +%H:%M:%S)"; }
@@ -136,8 +146,54 @@ print(c["target_phrase"], c["n_samples"], c["steps"])
 EOF
 
 T="python3 openwakeword/openwakeword/train.py --training_config my_model.yaml"
+POS="my_custom_model/${MODEL_NAME}/positive_train"
+# Copies of real clips from an earlier run would count as generated clips; clear them first.
+rm -f "$POS"/real_*.wav
 step generate
 $T --generate_clips > generate.log 2>&1 || { tail -20 generate.log; fail generate; }
+
+# Real recordings join the synthetic positives before augmentation, so each copy gets its own
+# background noise and room echo. A share of them, taken evenly from every source recording,
+# stays out of training for the recall check at the end.
+step real_clips
+python3 - <<'EOF' || fail real_clips
+import os, random, shutil, soundfile as sf
+src = os.environ.get("REAL_CLIPS")
+if not src:
+    print("no REAL_CLIPS: synthetic only")
+    raise SystemExit(0)
+pos = os.path.join("my_custom_model", os.environ["MODEL_NAME"], "positive_train")
+hold = "real_holdout"
+shutil.rmtree(hold, ignore_errors=True)
+os.makedirs(hold)
+clips = sorted(f for f in os.listdir(src) if f.lower().endswith(".wav"))
+info = {f: sf.info(os.path.join(src, f)) for f in clips}
+bad = [f for f, i in info.items() if i.samplerate != 16000 or i.channels != 1]
+if bad:
+    raise SystemExit(f"Not 16 kHz mono: {bad[:5]}")
+# Training windows are about 2 s and train.py truncates longer clips, which could cut the phrase.
+too_long = [f for f in clips if info[f].duration > 2.0]
+clips = [f for f in clips if info[f].duration <= 2.0]
+print(f"{len(clips)} real clips; {len(too_long)} longer than 2 s left out")
+groups = {}
+for f in clips:
+    groups.setdefault(f.rsplit("_", 1)[0], []).append(f)
+rnd = random.Random(1)
+repeat, share = int(os.environ["REAL_REPEAT"]), float(os.environ["REAL_HOLDOUT"])
+n_train = n_hold = 0
+for name, files in sorted(groups.items()):
+    rnd.shuffle(files)
+    k = round(len(files) * share)
+    for f in files[:k]:
+        shutil.copy(os.path.join(src, f), os.path.join(hold, f))
+    for f in files[k:]:
+        for r in range(repeat):
+            shutil.copy(os.path.join(src, f), os.path.join(pos, f"real_{f[:-4]}_{r:02d}.wav"))
+    n_hold += k
+    n_train += len(files) - k
+    print(f"{name}: {len(files) - k} for training, {k} held out")
+print(f"real clips: {n_train} x {repeat} in training, {n_hold} held out")
+EOF
 step augment
 $T --augment_clips > augment.log 2>&1 || { tail -20 augment.log; fail augment; }
 
@@ -183,4 +239,29 @@ OUT="my_custom_model/${MODEL_NAME}.tflite"
 onnx2tf -i "$ONNX" -o my_custom_model/ -kat onnx____Flatten_0 > convert.log 2>&1 || { tail -10 convert.log; fail convert; }
 mv "my_custom_model/${MODEL_NAME}_float32.tflite" "$OUT" || fail convert
 sha256sum "$OUT"
+
+# Recall on the held-out real clips: each clip, with a second of silence around it, runs through
+# the trained model the way the app streams audio (80 ms frames); a clip counts as detected when
+# its peak score reaches 0.5, the app's default threshold.
+step real_recall
+python3 - "$ONNX" <<'EOF' || fail real_recall
+import os, sys, numpy as np, soundfile as sf
+if not os.path.isdir("real_holdout") or not os.listdir("real_holdout"):
+    print("no held-out real clips")
+    raise SystemExit(0)
+from openwakeword.model import Model
+m = Model(wakeword_models=[sys.argv[1]], inference_framework="onnx")
+key = list(m.models.keys())[0]
+by_source, peaks = {}, []
+for f in sorted(os.listdir("real_holdout")):
+    a, _ = sf.read(os.path.join("real_holdout", f), dtype="int16")
+    a = np.concatenate([np.zeros(16000, np.int16), a, np.zeros(16000, np.int16)])
+    m.reset()
+    peak = max(m.predict(a[i:i + 1280])[key] for i in range(0, len(a) - 1279, 1280))
+    peaks.append(peak)
+    by_source.setdefault(f.rsplit("_", 1)[0], []).append(peak)
+for s, p in sorted(by_source.items()):
+    print(f"real recall {s}: {sum(x >= 0.5 for x in p)}/{len(p)}  (median peak {np.median(p):.2f})")
+print(f"REAL RECALL: {sum(x >= 0.5 for x in peaks)}/{len(peaks)} = {np.mean([x >= 0.5 for x in peaks]):.2f}")
+EOF
 echo "FINISHED $WORKDIR/$OUT"

@@ -65,3 +65,11 @@ ffmpeg -i take1.m4a -ac 1 -ar 16000 -c:a pcm_s16le recordings/raw/take1.wav
 node tools/wake_word_training/split_recordings.js recordings/clips recordings/raw/*.wav
 ```
 It finds the pauses on the speech band (200–3500 Hz), so steady background noise doesn't merge utterances, and writes `segments.csv` with each clip's source and time. Utterances shorter than 0.3 s or longer than 2.5 s are skipped; the environment variables at the top of the script tune this.
+
+To train with them, point `REAL_CLIPS` at the clips folder (on Colab: zip the clips, tick **USE_REAL_CLIPS**, and upload the zip when asked). The script then:
+- keeps a fifth of the clips from each source recording out of training (`REAL_HOLDOUT`);
+- copies each remaining clip `REAL_REPEAT` times (default 15) into the positive training set, before augmentation, so every copy gets different noise and echo; 150 real clips × 15 is about a fifth of the 10,000 synthetic ones;
+- leaves out clips longer than 2 s, since `train.py` truncates clips to its ~2 s window;
+- ends with **REAL RECALL**: the share of held-out clips whose peak score reaches 0.5, per source and overall. This is the number to compare between runs, not the synthetic recall.
+
+Keep several speakers in the recordings: more voices help more than more repetitions of one voice.
