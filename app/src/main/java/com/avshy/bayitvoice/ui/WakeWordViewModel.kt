@@ -9,9 +9,7 @@ import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.avshy.bayitvoice.arbitration.PeerArbiter
-import com.avshy.bayitvoice.arbitration.PeerLog
-import com.avshy.bayitvoice.arbitration.SeenPeer
+import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.ha.ConnectionManager
@@ -39,9 +37,9 @@ data class WakeWordUiState(
     val importFailed: Boolean = false,
     val loadFailed: Boolean = false,
     val arbitrationEnabled: Boolean = true,
-    val arbitrationWindowMs: Long = PeerArbiter.DEFAULT_WINDOW_MS,
-    val arbitrationGroupName: String = "",
-    val peers: List<SeenPeer> = emptyList(),
+    /** The name set in the app; empty = the system's name, shown as [systemDeviceName]. */
+    val deviceName: String = "",
+    val systemDeviceName: String = "",
 )
 
 /** Wake-word, background and connection-mode settings. */
@@ -108,16 +106,9 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
         reload()
     }
 
-    fun setArbitrationWindow(ms: Long) {
-        _state.update { it.copy(arbitrationWindowMs = ms) }
-    }
-
-    fun commitArbitrationWindow() {
-        settings.arbitrationWindowMs = _state.value.arbitrationWindowMs
-    }
-
-    fun setArbitrationGroupName(name: String) {
-        settings.arbitrationGroupName = name
+    /** A blank name goes back to the system's device name. */
+    fun setDeviceName(name: String) {
+        settings.deviceName = name.takeIf { it.isNotBlank() && it.trim() != _state.value.systemDeviceName }
         reload()
     }
 
@@ -163,9 +154,8 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
                 ignoresBatteryOptimization = power.isIgnoringBatteryOptimizations(context.packageName),
                 loadFailed = settings.wakeModelLoadFailed,
                 arbitrationEnabled = settings.arbitrationEnabled,
-                arbitrationWindowMs = settings.arbitrationWindowMs,
-                arbitrationGroupName = settings.arbitrationGroupName.orEmpty(),
-                peers = PeerLog(context).all(),
+                deviceName = settings.deviceName.orEmpty(),
+                systemDeviceName = SessionArbitration.systemDeviceName(context),
             )
         }
     }

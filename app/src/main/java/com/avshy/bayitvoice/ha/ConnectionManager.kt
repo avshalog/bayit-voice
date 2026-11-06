@@ -34,6 +34,7 @@ class ConnectionManager(private val settings: AppSettings, private val selector:
         val client = HaClient()
         val server = selector.connect(client, token)
         settings.lastHaVersion = client.haVersion
+        client.instanceKey()?.let { settings.haInstanceKey = it }
         HaConnection(client, server).also { current = it }
     }
 

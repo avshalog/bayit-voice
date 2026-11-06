@@ -3,6 +3,7 @@ package com.avshy.bayitvoice.session
 import android.util.Log
 import android.os.SystemClock
 import com.avshy.bayitvoice.audio.Chime
+import com.avshy.bayitvoice.audio.MicLevel
 import com.avshy.bayitvoice.audio.MicRecorder
 import com.avshy.bayitvoice.audio.MicrophoneException
 import com.avshy.bayitvoice.audio.TtsPlayer
@@ -299,9 +300,11 @@ class AssistSession(
                     val frame = ByteArray(length + 1)
                     System.arraycopy(buffer, 0, frame, 1, length)
                     chunks.trySend(frame)
+                    MicLevel.update(buffer, length)
                     if (measuring) accumulate(buffer, length)
                 }
             } finally {
+                MicLevel.reset()
                 chunks.close()
             }
         }

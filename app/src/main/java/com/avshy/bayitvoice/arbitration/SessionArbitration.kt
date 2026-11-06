@@ -23,7 +23,7 @@ class SessionArbitration private constructor(
 
     override suspend fun winnerElsewhere(commandSnrDb: Float?): String? {
         val claim = Claim(settings.deviceId, deviceName(app), proximity(detection, commandSnrDb), System.currentTimeMillis())
-        return arbiter.claim(groupKey, claim, settings.arbitrationWindowMs)?.deviceName
+        return arbiter.claim(groupKey, claim, PeerArbiter.DEFAULT_WINDOW_MS)?.deviceName
     }
 
     companion object {
@@ -47,8 +47,11 @@ class SessionArbitration private constructor(
             return level + CONFIDENCE_WEIGHT * detection.score
         }
 
-        /** The name the user gave the device in system settings, else its model. */
+        /** The name set in the app, else the one the user gave the device in system settings, else its model. */
         fun deviceName(context: Context): String =
+            AppSettings.get(context).deviceName ?: systemDeviceName(context)
+
+        fun systemDeviceName(context: Context): String =
             Settings.Global.getString(context.contentResolver, "device_name")?.takeIf { it.isNotBlank() } ?: Build.MODEL
     }
 }

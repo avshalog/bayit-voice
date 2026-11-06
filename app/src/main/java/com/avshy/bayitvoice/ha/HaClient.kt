@@ -12,6 +12,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
@@ -127,6 +128,19 @@ class HaClient(private val http: OkHttpClient = sharedHttp) {
         }
         return PipelineList(pipelines, result.optString("preferred_pipeline").ifEmpty { null })
     }
+
+    /**
+     * A fingerprint of this HA instance, the same whichever address reached it. HA's API has no
+     * instance id, so it is a hash of the home's location settings from `get_config`, which are
+     * the same for every device of one home. Null if the server did not answer.
+     */
+    suspend fun instanceKey(): String? = runCatching {
+        val config = awaitResult(send("get_config")).getJSONObject("result")
+        val identity = listOf("latitude", "longitude", "location_name", "time_zone")
+            .joinToString("|") { config.opt(it)?.toString().orEmpty() }
+        MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+    }.onFailure { Log.w(TAG, "No instance key: ${it.javaClass.simpleName}") }.getOrNull()
 
     /** HA-level ping/pong: true if the server answered within [timeoutMs]. */
     suspend fun ping(timeoutMs: Long = PING_TIMEOUT_MS): Boolean =

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: sample conversation for SessionDemoActivity. -->
+<resources>
+    <string name="demo_user_text">תדליק את האור בסלון</string>
+    <string name="demo_reply_text">הדלקתי את האור בסלון על 80% בהירות. רוצה שאכבה אותו אוטומטית בחצות?</string>
+</resources>

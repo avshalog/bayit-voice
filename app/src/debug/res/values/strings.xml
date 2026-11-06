@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: sample conversation for SessionDemoActivity. -->
+<resources>
+    <string name="demo_user_text">Turn on the living room light</string>
+    <string name="demo_reply_text">I turned on the living room light at 80% brightness. Should I turn it off automatically at midnight?</string>
+</resources>

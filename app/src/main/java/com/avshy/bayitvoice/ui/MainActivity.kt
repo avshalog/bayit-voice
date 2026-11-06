@@ -212,6 +212,10 @@ private fun SettingsScreen(
             }
 
             HorizontalDivider()
+            SectionTitle(R.string.settings_section_session_style)
+            SessionStylePicker(state.sessionStyle, viewModel::setSessionStyle)
+
+            HorizontalDivider()
             SectionTitle(R.string.settings_section_behaviour)
             AutoCloseField(state.autoCloseSeconds, viewModel::setAutoCloseSeconds)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

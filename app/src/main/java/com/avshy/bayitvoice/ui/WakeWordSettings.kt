@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import android.provider.Settings
-import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -40,7 +39,6 @@ import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.wakeword.WakeWordModel
-import kotlin.math.roundToLong
 
 /** Settings for the wake word, background behaviour and connection mode. */
 @Composable
@@ -174,41 +172,18 @@ private fun ArbitrationSettings(state: WakeWordUiState, viewModel: WakeWordViewM
     Text(stringResource(R.string.arbitration_help), style = MaterialTheme.typography.bodySmall)
     if (!state.arbitrationEnabled) return
 
-    Text(stringResource(R.string.arbitration_window, state.arbitrationWindowMs.toInt()))
-    Slider(
-        value = state.arbitrationWindowMs.toFloat(),
-        onValueChange = { viewModel.setArbitrationWindow((it / 50).roundToLong() * 50) },
-        onValueChangeFinished = viewModel::commitArbitrationWindow,
-        valueRange = 100f..1000f,
-        steps = 17,
-    )
-    Text(stringResource(R.string.arbitration_window_help), style = MaterialTheme.typography.bodySmall)
-
-    var group by remember(state.arbitrationGroupName) { mutableStateOf(state.arbitrationGroupName) }
+    // Shows the system's name until the user types their own; saved when the field loses focus.
+    val shown = state.deviceName.ifEmpty { state.systemDeviceName }
+    var name by remember(shown) { mutableStateOf(shown) }
     OutlinedTextField(
-        value = group,
-        onValueChange = { group = it },
+        value = name,
+        onValueChange = { name = it },
         singleLine = true,
-        label = { Text(stringResource(R.string.arbitration_group)) },
-        modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused && group != state.arbitrationGroupName) viewModel.setArbitrationGroupName(group) },
+        label = { Text(stringResource(R.string.device_name)) },
+        supportingText = { Text(stringResource(R.string.device_name_help)) },
+        textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
+        modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused && name != shown) viewModel.setDeviceName(name) },
     )
-    Text(stringResource(R.string.arbitration_group_help), style = MaterialTheme.typography.bodySmall)
-
-    Text(stringResource(R.string.arbitration_peers), style = MaterialTheme.typography.titleSmall)
-    if (state.peers.isEmpty()) {
-        Text(stringResource(R.string.arbitration_no_peers), style = MaterialTheme.typography.bodySmall)
-    } else {
-        state.peers.forEach { peer ->
-            Text(
-                stringResource(
-                    R.string.arbitration_peer,
-                    peer.name,
-                    DateUtils.getRelativeTimeSpanString(peer.lastSeenMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
-                ),
-                style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Content),
-            )
-        }
-    }
 }
 
 @Composable

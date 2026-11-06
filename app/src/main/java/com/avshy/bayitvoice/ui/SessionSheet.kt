@@ -58,10 +58,26 @@ import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.session.SessionNotice
 import com.avshy.bayitvoice.session.SessionPhase
 import com.avshy.bayitvoice.session.SessionState
+import com.avshy.bayitvoice.ui.orb.Orb
+import com.avshy.bayitvoice.ui.orb.OrbState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 
-/** The conversation sheet: status, what the user said, the reply, and one bottom slot. */
+/**
+ * The conversation sheet: status, what the user said, the reply, and one bottom slot.
+ * [futuristic] puts an animated orb in the bottom slot instead of the reply's waveform.
+ */
 @Composable
-fun SessionSheet(state: SessionState, onMic: () -> Unit, onClose: () -> Unit) {
+fun SessionSheet(state: SessionState, futuristic: Boolean, onMic: () -> Unit, onClose: () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -71,14 +87,15 @@ fun SessionSheet(state: SessionState, onMic: () -> Unit, onClose: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).background(SessionColors.handle, CircleShape))
-        StatusRow(state.phase, state.answeredBy, onClose)
-        Conversation(state)
-        BottomSlot(state.phase, onMic)
+        StatusRow(state.phase, state.answeredBy, showDots = !futuristic, onClose)
+        Conversation(state, translucentBubble = futuristic)
+        // The orb is drawn behind the conversation, so it may rise under the text.
+        if (futuristic) OrbSlot(state.phase, onMic, Modifier.zIndex(-1f)) else BottomSlot(state.phase, onMic)
     }
 }
 
 @Composable
-private fun StatusRow(phase: SessionPhase, answeredBy: String?, onClose: () -> Unit) {
+private fun StatusRow(phase: SessionPhase, answeredBy: String?, showDots: Boolean, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         PhaseIcon(phase, SessionColors.accent)
         Row(
@@ -95,7 +112,7 @@ private fun StatusRow(phase: SessionPhase, answeredBy: String?, onClose: () -> U
                 fontWeight = FontWeight.SemiBold,
                 style = TextStyle(textDirection = TextDirection.Content),
             )
-            if (phase == SessionPhase.Listening || phase == SessionPhase.Thinking) {
+            if (showDots && (phase == SessionPhase.Listening || phase == SessionPhase.Thinking)) {
                 BouncingDots(SessionColors.accent, Modifier.padding(bottom = 6.dp))
             }
         }
@@ -110,7 +127,7 @@ private fun StatusRow(phase: SessionPhase, answeredBy: String?, onClose: () -> U
     }
 }
 
-private fun phaseLabel(phase: SessionPhase) = when (phase) {
+internal fun phaseLabel(phase: SessionPhase) = when (phase) {
     SessionPhase.Idle -> R.string.phase_idle
     SessionPhase.Connecting -> R.string.phase_connecting
     SessionPhase.Listening -> R.string.phase_listening
@@ -121,14 +138,14 @@ private fun phaseLabel(phase: SessionPhase) = when (phase) {
 }
 
 @Composable
-private fun Conversation(state: SessionState) {
+private fun Conversation(state: SessionState, translucentBubble: Boolean) {
     val contentStyle = TextStyle(textDirection = TextDirection.Content)
     Column(
         Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 260.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         AnimatedVisibility(state.userText.isNotEmpty(), enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { it / 4 }) {
-            UserBubble(state.userText)
+            UserBubble(state.userText, if (translucentBubble) SessionColors.raised.copy(alpha = 0.5f) else SessionColors.raised)
         }
         AnimatedVisibility(state.replyText.isNotEmpty(), enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { it / 4 }) {
             Text(
@@ -156,8 +173,7 @@ private fun Conversation(state: SessionState) {
 
 /** What the user said, in a speech bubble whose curved tail points at the start edge. */
 @Composable
-private fun UserBubble(text: String) {
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+private fun UserBubble(text: String, color: Color) {
     Box(Modifier.padding(start = 10.dp).widthIn(max = 300.dp)) {
         Text(
             text,
@@ -166,14 +182,21 @@ private fun UserBubble(text: String) {
             lineHeight = 22.sp,
             style = TextStyle(textDirection = TextDirection.Content),
             modifier = Modifier
-                .background(SessionColors.raised, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 0.dp))
+                .background(color, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomEnd = 20.dp, bottomStart = 0.dp))
                 .padding(PaddingValues(horizontal = 16.dp, vertical = 10.dp)),
         )
-        Canvas(Modifier.align(Alignment.BottomStart).offset(x = (-13.5).dp).size(14.dp, 18.dp)) {
-            // Drawn for a tail on the right; mirrored when the start edge is on the left.
-            scale(scaleX = if (rtl) 1f else -1f, scaleY = 1f) {
-                scale(size.width / 14f, pivot = Offset.Zero) { drawPath(tailPath, SessionColors.raised) }
-            }
+        BubbleTail(color, Modifier.align(Alignment.BottomStart).offset(x = (-13.5).dp).size(14.dp, 18.dp))
+    }
+}
+
+/** The bubble's curved tail, pointing at the start edge. */
+@Composable
+internal fun BubbleTail(color: Color, modifier: Modifier) {
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    Canvas(modifier) {
+        // Drawn for a tail on the right; mirrored when the start edge is on the left.
+        scale(scaleX = if (rtl) 1f else -1f, scaleY = 1f) {
+            scale(size.width / 14f, pivot = Offset.Zero) { drawPath(tailPath, color) }
         }
     }
 }
@@ -210,6 +233,65 @@ private fun BottomSlot(phase: SessionPhase, onMic: () -> Unit) {
 }
 
 private enum class Slot { Empty, Wave, SpeakAgain, TryAgain, Speak }
+
+/**
+ * The futuristic bottom slot: an orb for the whole turn, rising behind the text. When the turn
+ * is done its dots gather into a check mark, which "Speak again" then replaces.
+ */
+@Composable
+private fun OrbSlot(phase: SessionPhase, onMic: () -> Unit, modifier: Modifier) {
+    val orbState = orbStateFor(phase)
+    val doneButton = rememberDoneButton(phase)
+    val button = when {
+        phase == SessionPhase.Done && doneButton -> R.string.session_speak_again
+        phase == SessionPhase.Error -> R.string.session_try_again
+        phase == SessionPhase.Idle -> R.string.session_mic
+        else -> null
+    }
+    var lastState by remember { mutableStateOf(OrbState.Connecting) }
+    if (orbState != null) lastState = orbState
+    val orbAlpha by animateFloatAsState(if (orbState != null && button == null) 1f else 0f, tween(300), label = "orb")
+
+    Box(modifier.fillMaxWidth().height(48.dp), contentAlignment = Alignment.Center) {
+        if (orbAlpha > 0f) {
+            // A box wider than the orb, so the check's stroke has room; the orb's centre sits just below the slot's top.
+            Orb(
+                lastState, orbSize = 104.dp, tint = SessionColors.accent, countMul = 1.4f, speedMul = 0.85f,
+                modifier = Modifier.requiredSize(240.dp).offset(y = (-16).dp).graphicsLayer { alpha = orbAlpha },
+            )
+        }
+        AnimatedVisibility(button != null, enter = fadeIn(tween(250)), exit = fadeOut(tween(150))) {
+            var label by remember { mutableStateOf(R.string.session_mic) }
+            if (button != null) label = button
+            MicButton(label, onMic)
+        }
+    }
+}
+
+internal fun orbStateFor(phase: SessionPhase): OrbState? = when (phase) {
+    SessionPhase.Connecting -> OrbState.Connecting
+    SessionPhase.Listening -> OrbState.Listening
+    SessionPhase.Thinking -> OrbState.Working
+    SessionPhase.Speaking -> OrbState.Composing
+    SessionPhase.Done -> OrbState.Check
+    else -> null
+}
+
+/** True once the check mark has had time to form and hold after a turn is done. */
+@Composable
+internal fun rememberDoneButton(phase: SessionPhase): Boolean {
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(phase) {
+        show = false
+        if (phase == SessionPhase.Done) {
+            delay(CHECK_HOLD_MS)
+            show = true
+        }
+    }
+    return show
+}
+
+private const val CHECK_HOLD_MS = 2_350L
 
 @Composable
 private fun MicButton(label: Int, onClick: () -> Unit) {

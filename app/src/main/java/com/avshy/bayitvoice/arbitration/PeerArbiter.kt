@@ -81,7 +81,6 @@ class PeerArbiter(context: Context) {
             if (lock.isHeld) lock.release()
         }
 
-        PeerLog(app).record(peers.values)
         val winner = peers.values.filter { it.beats(mine) }.reduceOrNull { a, b -> if (a.beats(b)) a else b }
         Log.i(TAG, "Arbitration: mine %.1f vs %s -> %s".format(
             mine.score,

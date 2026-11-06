@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.config.ServerUrl
+import com.avshy.bayitvoice.config.SessionStyle
 import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.ha.HaClient
 import com.avshy.bayitvoice.ha.HaException
@@ -49,6 +50,7 @@ data class SettingsUiState(
     val pipelineMissing: Boolean = false,
     val autoCloseSeconds: Int = AppSettings.DEFAULT_AUTO_CLOSE_SECONDS,
     val chimeEnabled: Boolean = true,
+    val sessionStyle: SessionStyle = SessionStyle.Wave,
 ) {
     val isConnected: Boolean
         get() = homeStatus is ConnectionStatus.Connected || externalStatus is ConnectionStatus.Connected
@@ -74,6 +76,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             selectedPipelineId = settings.pipelineId,
             autoCloseSeconds = settings.autoCloseSeconds,
             chimeEnabled = settings.chimeEnabled,
+            sessionStyle = settings.sessionStyle,
         )
     )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
@@ -190,6 +193,11 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(chimeEnabled = enabled) }
     }
 
+    fun setSessionStyle(style: SessionStyle) {
+        settings.sessionStyle = style
+        _state.update { it.copy(sessionStyle = style) }
+    }
+
     fun signOut() {
         settings.signOut()
         onCredentialsChanged()
@@ -221,6 +229,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         return try {
             val version = client.connect(server.webSocketUrl, token)
             val pipelines = client.listPipelines()
+            client.instanceKey()?.let { settings.haInstanceKey = it }
             TestResult(ConnectionStatus.Connected(version, HaVersion.supportsContinueConversation(version)), pipelines)
         } catch (e: HaException) {
             Log.w(TAG, "Test of ${server.host} failed: ${e.javaClass.simpleName}: ${e.cause}")

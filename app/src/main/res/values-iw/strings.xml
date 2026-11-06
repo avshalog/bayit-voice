@@ -25,6 +25,10 @@
     <string name="settings_section_pipeline">צינור Assist</string>
     <string name="settings_pipeline_default">ברירת מחדל (הצינור המועדף ב-HA)</string>
     <string name="settings_pipeline_currently">כרגע: %1$s</string>
+    <string name="settings_section_session_style">מסך השיחה</string>
+    <string name="session_style_wave">תבנית גל</string>
+    <string name="session_style_futuristic">עתידני</string>
+    <string name="session_style_full_screen">מסך מלא</string>
     <string name="settings_section_behaviour">התנהגות</string>
     <string name="settings_auto_close_label">סגירה אוטומטית אחרי (שניות)</string>
     <string name="settings_auto_close_help">0 = לעולם לא לסגור אוטומטית</string>
@@ -90,14 +94,9 @@
     <string name="connection_on_demand_help">פעילות רקע מינימלית. התשובה הראשונה מעט איטית יותר.</string>
     <string name="arbitration_title">כמה מכשירים באותו בית</string>
     <string name="arbitration_enabled">רק המכשיר הקרוב עונה</string>
-    <string name="arbitration_help">כשכמה מכשירים שמחוברים לאותו Home Assistant שומעים את מילת ההפעלה, הם בודקים ביניהם דרך ה-Wi-Fi של הבית, ורק הקרוב ביותר עונה. אם אין מכשירים נוספים, שום דבר לא משתנה.</string>
-    <string name="arbitration_window">המתנה למכשירים אחרים: %1$d אלפיות שנייה</string>
-    <string name="arbitration_window_help">ארוך יותר בטוח יותר ברשת איטית, אבל הצליל מגיע מעט מאוחר יותר. ברירת מחדל: 300.</string>
-    <string name="arbitration_group">שם קבוצה (לא חובה)</string>
-    <string name="arbitration_group_help">מכשירים בודקים ביניהם כשהם משתמשים באותה כתובת של Home Assistant. אם הכתובות שונות, תנו לכולם את אותו שם קבוצה.</string>
-    <string name="arbitration_peers">מכשירים אחרים שנראו</string>
-    <string name="arbitration_no_peers">עדיין אין. מכשירים אחרים יופיעו כאן אחרי שישמעו את מילת ההפעלה יחד עם המכשיר הזה. אם מכשיר אף פעם לא מופיע, בדקו שכולם מחוברים לאותה רשת Wi-Fi, ושהנתב לא מבודד מכשירים זה מזה (כמו שקורה הרבה ברשתות אורחים).</string>
-    <string name="arbitration_peer">%1$s · %2$s</string>
+    <string name="arbitration_help">כשכמה מכשירים שומעים את מילת ההפעלה, הם מתאמים ביניהם, ורק המכשיר ששמע אותך הכי טוב עונה. כשיש רק מכשיר אחד, שום דבר לא משתנה.</string>
+    <string name="device_name">שם המכשיר</string>
+    <string name="device_name_help">כך המכשיר יופיע במכשירים האחרים</string>
     <string name="dialog_ok">אישור</string>
     <string name="dialog_cancel">ביטול</string>
     <string name="back">חזרה</string>
@@ -135,5 +134,5 @@
     <string name="about_models_title">מודלים של מילת הפעלה</string>
     <string name="about_models_license">מודלי מילת ההפעלה המובנים ומודלי המאפיינים של openWakeWord (melspectrogram, embedding) נוצרו על ידי David Scripka (openWakeWord) ומורשים תחת Creative Commons ייחוס-שימוש לא מסחרי-שיתוף זהה 4.0 (CC BY-NC-SA 4.0). אסור להשתמש בהם למטרות מסחריות. הקוד של openWakeWord מורשה תחת Apache 2.0.</string>
     <string name="about_libraries_title">ספריות</string>
-    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0.</string>
+    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0. הכדור המונפש מבוסס על thinking-orbs מאת Jakub Antalik: רישיון MIT.</string>
 </resources>

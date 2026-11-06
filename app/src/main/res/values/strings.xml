@@ -27,6 +27,10 @@
     <string name="settings_section_pipeline">Assist pipeline</string>
     <string name="settings_pipeline_default">Default (HA preferred pipeline)</string>
     <string name="settings_pipeline_currently">Currently: %1$s</string>
+    <string name="settings_section_session_style">Conversation screen</string>
+    <string name="session_style_wave">Wave</string>
+    <string name="session_style_futuristic">Futuristic</string>
+    <string name="session_style_full_screen">Full screen</string>
     <string name="settings_section_behaviour">Behaviour</string>
     <string name="settings_auto_close_label">Auto-close delay (seconds)</string>
     <string name="settings_auto_close_help">0 = never close automatically</string>
@@ -92,14 +96,9 @@
     <string name="connection_on_demand_help">Least background activity. The first reply is slightly slower.</string>
     <string name="arbitration_title">Several devices in one home</string>
     <string name="arbitration_enabled">Only the nearest device answers</string>
-    <string name="arbitration_help">When several devices connected to the same Home Assistant hear the wake word, they check with each other over the home Wi-Fi, and only the nearest one answers. With no other devices, nothing changes.</string>
-    <string name="arbitration_window">Wait for other devices: %1$d ms</string>
-    <string name="arbitration_window_help">Longer is safer on a slow network, but the chime comes a little later. Default 300 ms.</string>
-    <string name="arbitration_group">Group name (optional)</string>
-    <string name="arbitration_group_help">Devices check with each other when they use the same Home Assistant address. If yours use different addresses, give them all the same group name.</string>
-    <string name="arbitration_peers">Other devices seen</string>
-    <string name="arbitration_no_peers">None yet. Other devices show up here after they hear the wake word together with this one. If one never does, check that all of them are on the same Wi-Fi network, and that the router does not isolate devices (as guest networks often do).</string>
-    <string name="arbitration_peer">%1$s · %2$s</string>
+    <string name="arbitration_help">When several devices hear the wake word, they coordinate, and only the one that heard you best answers. With a single device, nothing changes.</string>
+    <string name="device_name">Device name</string>
+    <string name="device_name_help">How this device appears on the others</string>
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="back">Back</string>
@@ -138,5 +137,5 @@
     <string name="about_models_title">Wake word models</string>
     <string name="about_models_license">The built-in wake word models and the openWakeWord feature models (melspectrogram, embedding) are by David Scripka (openWakeWord) and are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0). They may not be used for commercial purposes. The openWakeWord code is licensed under Apache 2.0.</string>
     <string name="about_libraries_title">Libraries</string>
-    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX and Jetpack Compose, Kotlin coroutines: Apache License 2.0.</string>
+    <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX and Jetpack Compose, Kotlin coroutines: Apache License 2.0. The animated orb is based on thinking-orbs by Jakub Antalik: MIT License.</string>
 </resources>

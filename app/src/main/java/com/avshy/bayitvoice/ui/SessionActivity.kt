@@ -37,7 +37,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.SessionStyle
 import com.avshy.bayitvoice.session.WakeDetection
 import com.avshy.bayitvoice.service.SessionLauncher
 import com.avshy.bayitvoice.session.SessionError
@@ -65,6 +70,8 @@ class SessionActivity : ComponentActivity() {
         // The sheet's own colour runs under the navigation bar; no system scrim over it.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         showOverLockScreen()
+        val style = AppSettings.get(this).sessionStyle
+        if (style == SessionStyle.FullScreen) hideSystemBars()
 
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,15 +83,16 @@ class SessionActivity : ComponentActivity() {
                 finish()
             }
             BackHandler { dismiss() }
-            SessionOverlay(
-                visible = sheetVisible,
-                onDismiss = ::dismiss,
-            ) {
-                SessionSheet(
-                    state = state,
-                    onMic = { startWithPermission(fromWakeWord = false) },
-                    onClose = ::dismiss,
-                )
+            val onMic = { startWithPermission(fromWakeWord = false) }
+            if (style == SessionStyle.FullScreen) {
+                // The whole screen fades in and out, instead of a sheet sliding.
+                AnimatedVisibility(visibleState = sheetVisible, enter = fadeIn(tween(300)), exit = fadeOut(tween(260))) {
+                    FullScreenSession(state = state, onMic = onMic, onClose = ::dismiss)
+                }
+            } else {
+                SessionOverlay(visible = sheetVisible, onDismiss = ::dismiss) {
+                    SessionSheet(state = state, futuristic = style == SessionStyle.Futuristic, onMic = onMic, onClose = ::dismiss)
+                }
             }
         }
 
@@ -121,6 +129,14 @@ class SessionActivity : ComponentActivity() {
 
     private fun isGranted(permission: String) =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    /** Full screen hides the status and navigation bars; a swipe from the edge shows them for a moment. */
+    private fun hideSystemBars() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
 
     private fun showOverLockScreen() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {

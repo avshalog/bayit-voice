@@ -3,12 +3,14 @@ package com.avshy.bayitvoice.config
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.avshy.bayitvoice.arbitration.PeerArbiter
 import com.avshy.bayitvoice.wakeword.WakeWordModels
 import java.security.SecureRandom
 
 /** How the HA WebSocket is held between sessions (SPEC section 7.3). */
 enum class ConnectionMode { KeepConnected, OnDemand }
+
+/** How a conversation is shown (SPEC section 5.1): the wave sheet, the orb sheet, or the whole screen. */
+enum class SessionStyle { Wave, Futuristic, FullScreen }
 
 /**
  * All user configuration. Non-secret values live in plain preferences;
@@ -90,23 +92,29 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_ARBITRATION, true)
         set(value) = prefs.edit { putBoolean(KEY_ARBITRATION, value) }
 
-    /** How long to wait for other devices' claims after a detection. */
-    var arbitrationWindowMs: Long
-        get() = prefs.getLong(KEY_ARBITRATION_WINDOW, PeerArbiter.DEFAULT_WINDOW_MS)
-        set(value) = prefs.edit { putLong(KEY_ARBITRATION_WINDOW, value.coerceIn(100L, 1_000L)) }
-
-    /** Optional override of the group, for devices that reach the same HA by different addresses. */
-    var arbitrationGroupName: String?
-        get() = prefs.getString(KEY_ARBITRATION_GROUP, null)?.takeIf { it.isNotBlank() }
-        set(value) = prefs.edit { putString(KEY_ARBITRATION_GROUP, value?.trim()) }
+    /** The name other devices show for this one; null = the system's device name. */
+    var deviceName: String?
+        get() = prefs.getString(KEY_DEVICE_NAME, null)?.takeIf { it.isNotBlank() }
+        set(value) = prefs.edit { putString(KEY_DEVICE_NAME, value?.trim()) }
 
     /**
-     * Which devices arbitrate together: the group name if set, else the HA address. Null when
-     * neither exists. Normalized so small spelling differences don't split a home.
+     * A fingerprint of the HA instance ([com.avshy.bayitvoice.ha.HaClient.instanceKey]): the
+     * same on every device of one home, whatever address each one uses.
      */
+    var haInstanceKey: String?
+        get() = prefs.getString(KEY_HA_INSTANCE, null)
+        set(value) = prefs.edit { putString(KEY_HA_INSTANCE, value) }
+
+    /** Which devices arbitrate together: the HA instance when known, else its address. Null when neither exists. */
     val arbitrationGroupId: String?
-        get() = arbitrationGroupName?.lowercase()?.let { "name:$it" }
+        get() = haInstanceKey?.let { "instance:$it" }
             ?: (homeServer ?: externalServer)?.base?.let { "ha:$it" }
+
+    /** How this device shows a conversation (SPEC section 5.1). */
+    var sessionStyle: SessionStyle
+        get() = prefs.getString(KEY_SESSION_STYLE, null)
+            ?.let { runCatching { SessionStyle.valueOf(it) }.getOrNull() } ?: SessionStyle.Wave
+        set(value) = prefs.edit { putString(KEY_SESSION_STYLE, value.name) }
 
     /** This device's random, stable id for arbitration; never tied to the hardware. */
     val deviceId: Long
@@ -146,6 +154,9 @@ class AppSettings private constructor(context: Context) {
         }
         // Token store of the deprecated EncryptedSharedPreferences; the token must be entered again.
         context.deleteSharedPreferences(LEGACY_SECRETS_FILE)
+        // Arbitration settings that are no longer user-facing.
+        prefs.edit { remove("arbitration_window_ms"); remove("arbitration_group") }
+        context.deleteSharedPreferences("arbitration_peers")
     }
 
     companion object {
@@ -166,8 +177,9 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_START_ON_BOOT = "start_on_boot"
         private const val KEY_CONNECTION_MODE = "connection_mode"
         private const val KEY_ARBITRATION = "arbitration_enabled"
-        private const val KEY_ARBITRATION_WINDOW = "arbitration_window_ms"
-        private const val KEY_ARBITRATION_GROUP = "arbitration_group"
+        private const val KEY_DEVICE_NAME = "device_name"
+        private const val KEY_HA_INSTANCE = "ha_instance_key"
+        private const val KEY_SESSION_STYLE = "session_style"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_HA_VERSION = "ha_version"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"

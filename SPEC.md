@@ -66,6 +66,7 @@ Nothing about a specific home may be hard-coded: no URLs, tokens, pipeline ids, 
 
 - Server: URL, auth method, "test connection" button, sign out.
 - Pipeline picker (section 3.3).
+- Conversation screen style, per device (section 5.1): Wave (default), Futuristic, Full screen.
 - Auto-close delay in seconds (default 5; 0 = never auto-close).
 - Wake word: on/off, model choice, sensitivity threshold.
 - Chime on/off.
@@ -128,7 +129,9 @@ A pipeline may have no TTS engine. Then there is no `tts-end`; show the reply te
 
 ### 5.1 Session UI
 
-A translucent Activity that shows a dark bottom sheet, about a third of the screen tall, over whatever is on screen. It slides up when it opens and slides down when it closes. Tapping the dimmed area above it closes it.
+The user picks one of three styles per device in settings. **Wave** and **Futuristic** are bottom sheets for a phone in the hand; **Full screen** is for a device fixed in one place in the home.
+
+**Wave (default).** A translucent Activity that shows a dark bottom sheet, about a third of the screen tall, over whatever is on screen. It slides up when it opens and slides down when it closes. Tapping the dimmed area above it closes it.
 
 - **Status row:** a small animated icon per state, the state's name and a close button.
   - The states are connecting / listening / thinking / speaking / done / error.
@@ -138,6 +141,21 @@ A translucent Activity that shows a dark bottom sheet, about a third of the scre
 - **Bottom slot** (fixed height, so the sheet does not jump):
   - While the reply plays, a waveform scrolls in from the right edge. It follows the reply's loudness (`Visualizer` on the player's audio session), or a generic speech pattern when the device refuses.
   - After a turn: a "Speak again" mic button. After an error: "Try again". The mic button is hidden while a turn is running.
+
+**Futuristic.** The same sheet, with an animated orb of dots in place of the waveform:
+
+- The orb sits in the bottom slot for the whole turn, larger than the slot and drawn behind the text; the user's bubble is translucent so it shows through. The status row has no bouncing dots.
+- Each state has its own orb: connecting = a web of nodes, listening = a rippling sphere that speeds up with the microphone's level, thinking = orbits, speaking = a ribbon that speeds up with the reply's loudness (the same `Visualizer` level, or a generic speech pattern).
+- States cross-fade. When done, the orb's own dots fly into a check mark, which turns solid, holds for about 2 s and then gives way to "Speak again".
+- The orb geometry is ported from thinking-orbs (MIT License, credited in About). It is drawn in Compose only while the session UI is open; it allocates nothing per frame beyond the drawing calls.
+
+**Full screen.** For a tablet or phone fixed on a wall or a shelf. It takes over the whole screen (system bars hidden), fades in and out, and is meant to be read from across the room:
+
+- Near-black background with a soft glow of the accent colour around a large orb (the same orbs as Futuristic, denser).
+- Before there is any text, the orb is the hero in the middle of the screen. When text arrives the orb moves aside (landscape: to the end side, text on the start side) or up (portrait: text below it).
+- Large type: state label about 48 sp, the user's words in a bubble about 40 sp, the reply about 54 sp bold, on a 1280×800 (or 800×1280) design scaled to the screen. A large close button in the top corner.
+- When done, the check mark forms in the orb, then a large "Speak again" button takes the orb's place. Errors show "Try again" there.
+- It works in both orientations and follows the device's rotation.
 
 The UI must work over the lock screen (`setShowWhenLocked`, `setTurnScreenOn`), since the device usually sits idle with its screen off.
 
@@ -192,21 +210,21 @@ Users must be able to create and use a wake word of their own choice, in any lan
 When several devices running the app hear the same wake word, only the one closest to the speaker handles the command. Every device reacts at first, so the person in front of any of them sees it listening and keeps talking instead of repeating the wake word; the others then step aside.
 
 - **Transport:** UDP multicast on the local network (a fixed group address and port; acquire `WifiManager.MulticastLock` only while arbitrating, not all the time). No server and no HA involvement, so it adds no dependency.
-- **Grouping:** devices arbitrate only with peers connected to the same HA server. The group id is the normalized HA URL (the home address if set, else the external one), and the HMAC key is its SHA-256. Optional user-set "group name" override for devices that reach the same HA by different addresses.
+- **Grouping:** devices arbitrate only with peers connected to the same HA instance, whatever address each one uses. HA's WebSocket API has no instance id, so the group id is a SHA-256 of the home's location settings from `get_config` (`latitude`, `longitude`, `location_name`, `time_zone`), which are the same for every device of one home. It is refreshed on every connection and on "Test connection". Until it is known, the normalized HA URL is used. The HMAC key is the SHA-256 of the group id.
 - **What the user sees:** every device that heard the wake word chimes, opens its sheet and shows "Listening", with no waiting. The user speaks as usual. The nearest device runs the command and answers. Every other device keeps showing "Listening" until the user stops speaking, then shows "Answering on: <device name>" for about 1.5 s and closes without a sound.
 - **Flow:**
   1. On detection the service measures how far the wake word (the last second of audio) rose above the device's own noise floor, in dB, and opens the session at once, passing that level, the detection confidence, the noise floor and the detection time. Measuring against the device's own floor cancels differences in microphone gain between phones.
   2. The session chimes and records from the start, keeping the audio on the device; nothing goes to HA yet. While recording it measures the level of the start of the command, also against the noise floor.
   3. 1.5 s after the detection (the same moment on every device, give or take the few tens of milliseconds between their detections) it multicasts its claim `{device_id, device_name, score, timestamp}`: score = the mean of the wake-word level and the command level, in dB, plus 10 × the detection confidence. Using the start of the command as well as the wake word makes "nearest" more reliable than the short wake word alone.
-  4. It repeats the claim every 80 ms for a window (default 300 ms, configurable 100 to 1,000 ms), collecting the others' claims, then sends it once more. The highest score wins; ties go to the lowest `device_id`. Every device compares the same claims the same way, so all reach the same answer without announcing it.
+  4. It repeats the claim every 80 ms for a fixed window of 300 ms, collecting the others' claims, then sends it once more. The highest score wins; ties go to the lowest `device_id`. Every device compares the same claims the same way, so all reach the same answer without announcing it.
   5. The winner sends HA everything recorded so far, faster than real time, then streams live. HA waits for the end of speech anyway, so for any command longer than about 1.5 s the reply is not delayed; only a very short command is.
   6. A loser sends nothing to HA, so the command runs once. It keeps listening locally until the user stops speaking (about 0.8 s of silence after speech, or 1.2 s with no speech at all, at most 10 s), shows who is answering, and closes.
   - With no peers on the network the flow is the same: the device waits 1.5 s before sending, which only a very short command would notice.
   - The side key or long-press home picks a device explicitly and is never arbitrated; only wake-word sessions are.
 - **Follow-ups:** a continue-conversation turn belongs to the device that won the original session; other devices ignore it.
-- **Graceful fallback:** if multicast is blocked (AP/client isolation, guest networks) or no peers answer, the device simply proceeds on its own after the window. Show a hint in settings when no peers were ever seen but the user expects several devices.
+- **Graceful fallback:** if multicast is blocked (AP/client isolation, guest networks) or no peers answer, the device simply proceeds on its own after the window.
 - **Safety:** sign messages with an HMAC keyed by the group id, so devices of a different HA instance on the same network are ignored. Messages older than about 1 s are dropped.
-- **Settings:** arbitration on/off (default on), window length, group name, and a "devices seen recently" list for troubleshooting.
+- **Settings:** arbitration on/off (default on) and the device name other devices show ("Answering on: …"), which defaults to the system's device name. Nothing else: the window is fixed and grouping is automatic.
 - **Testing with one phone:** `tools/arbitration_peer.js` acts as another device from a computer on the same Wi-Fi (`listen` prints claims, `claim` sends one with a chosen score). Debug builds include an exported `DebugDetectReceiver` that acts as if the wake word was heard: `adb shell am broadcast -n <package>/.service.DebugDetectReceiver --ef score 0.9 --ef snr 20`.
 - Acceptance: two or three devices in neighbouring rooms, wake word said once near one of them; in 10 of 10 tries exactly one device responds, and it is the nearest one in at least 9 of 10.
 

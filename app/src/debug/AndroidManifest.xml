@@ -5,5 +5,9 @@
         <receiver
             android:name=".service.DebugDetectReceiver"
             android:exported="true" />
+        <activity
+            android:name=".ui.SessionDemoActivity"
+            android:theme="@style/Theme.BayitVoice.Session"
+            android:exported="true" />
     </application>
 </manifest>
