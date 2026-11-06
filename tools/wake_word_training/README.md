@@ -58,3 +58,10 @@ The numbers come from synthetic validation clips. They are much lower than real 
 ## Next: real recordings
 
 Synthetic English voices only approximate Hebrew. Recordings of real speakers saying the phrase should help most with other voices in the home. Keep recordings outside git (for example `recordings/`, which is git-ignored). openWakeWord can mix real clips into the positive set alongside the generated ones.
+
+`split_recordings.js` cuts long recordings of the phrase, said again and again with short pauses, into one 16 kHz clip per utterance:
+```bash
+ffmpeg -i take1.m4a -ac 1 -ar 16000 -c:a pcm_s16le recordings/raw/take1.wav
+node tools/wake_word_training/split_recordings.js recordings/clips recordings/raw/*.wav
+```
+It finds the pauses on the speech band (200–3500 Hz), so steady background noise doesn't merge utterances, and writes `segments.csv` with each clip's source and time. Utterances shorter than 0.3 s or longer than 2.5 s are skipped; the environment variables at the top of the script tune this.
