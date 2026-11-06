@@ -16,7 +16,7 @@ Trains an [openWakeWord](https://github.com/dscripka/openWakeWord) model from sy
 **Before you start**
 1. *Runtime → Change runtime type*: **T4 GPU**, runtime version **2026.04** (Python 3.12). The newest runtime has Python 3.13, where the speech generator does not install.
 2. Fill in the form below, then *Runtime → Run all*.
-3. A run takes about 2–3 hours on a T4. Keep the tab open. The last cell downloads the model.
+3. A run takes about 2–3 hours on a T4. Keep the tab open. The Train cell downloads the model as soon as it exists: Colab deletes the runtime, and everything in it, once the session ends or sits idle.
 
 **Tips**
 - Give several spellings of the same sound: they make the synthetic voices say it in different ways. For "היי בית": \`hey bah eet\`, \`hey baayit\`, \`hey baayeet\`.
@@ -71,9 +71,16 @@ for line in proc.stdout:
     if line.startswith(("FINISHED", "FAILED")):
         result = line.strip()
 proc.wait()
+# Download right away: Colab deletes the runtime, and the model with it, once the session ends
+# or idles out. A model is worth keeping even when a later step (the recall check) failed.
+import os
+model_path = f"/content/my_custom_model/{MODEL_NAME}.tflite"
+if os.path.exists(model_path):
+    from google.colab import files
+    files.download(model_path)
 if not (result or "").startswith("FINISHED"):
     raise SystemExit(f"Training did not finish: {result}. Logs: /content/*.log")`, { cellView: "form" }),
-  code(`#@title Download the model
+  code(`#@title Download the model again (the Train cell already downloads it)
 from google.colab import files
 files.download(f"/content/my_custom_model/{MODEL_NAME}.tflite")`, { cellView: "form" }),
 ];

@@ -77,3 +77,5 @@ Keep several speakers in the recordings: more voices help more than more repetit
 | Run | Real clips | Synthetic accuracy | Synthetic recall | False positives/hour | REAL RECALL (held out) |
 |---|---|---|---|---|---|
 | `hey_bayit` + real clips (2026-11-06) | 146 × 15 from 5 recordings, 3 speakers | 0.705 | 0.409 | 0.265 | 30/36 (0.83) |
+
+That model was lost: the Colab runtime idled out before it was downloaded, and the free GPU quota was used up for the day. The notebook's Train cell now downloads the model the moment it exists.
