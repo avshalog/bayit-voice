@@ -192,16 +192,18 @@ Users must be able to create and use a wake word of their own choice, in any lan
 When several devices running the app hear the same wake word, only the one closest to the speaker handles the command; the others cancel silently.
 
 - **Transport:** UDP multicast on the local network (a fixed group address and port; acquire `WifiManager.MulticastLock` only while arbitrating, not all the time). No server and no HA involvement, so it adds no dependency.
-- **Grouping:** devices arbitrate only with peers connected to the same HA server. The group id is a hash of the normalized HA URL. Optional user-set "group name" override for unusual setups.
+- **Grouping:** devices arbitrate only with peers connected to the same HA server. The group id is the normalized HA URL (the home address if set, else the external one), and the HMAC key is its SHA-256. Optional user-set "group name" override for devices that reach the same HA by different addresses.
 - **Flow on detection:**
-  1. Compute a proximity score: the audio level (RMS) of the wake-word segment, combined with the detection confidence. Loudness is the main signal for "closest".
-  2. Broadcast `{group, device_id, score, timestamp}` immediately, and start buffering audio (do not open the pipeline yet).
-  3. Listen for peer messages for a short window (default 200 ms, configurable).
-  4. The highest score wins; ties go to the lowest `device_id`. The winner proceeds with the session and streams the buffered audio plus live audio. Losers drop the buffer, play nothing, and resume wake-word listening after the normal cooldown.
+  1. Compute a proximity score: how far the last second of audio (the wake word) rose above the device's own noise floor, in dB, plus 10 × the detection confidence. Measuring against the device's own floor cancels differences in microphone gain between phones; loudness stays the main signal for "closest", and confidence breaks near-ties.
+  2. Stop wake-word capture and multicast the claim `{device_id, device_name, score, timestamp}`, repeating it every 80 ms so a device that detected slightly later still hears it.
+  3. Listen for peer claims for a short window (default 300 ms, configurable 100 to 1,000 ms), then send the claim once more.
+  4. The highest score wins; ties go to the lowest `device_id`. The winner opens the session. Losers play nothing and resume wake-word listening.
+  - No audio is buffered during the window: the session starts after arbitration and plays its chime, and the user speaks after the chime, so nothing is lost. The window only delays the chime.
 - **Follow-ups:** a continue-conversation turn belongs to the device that won the original session; other devices ignore it.
 - **Graceful fallback:** if multicast is blocked (AP/client isolation, guest networks) or no peers answer, the device simply proceeds on its own after the window. Show a hint in settings when no peers were ever seen but the user expects several devices.
 - **Safety:** sign messages with an HMAC keyed by the group id, so devices of a different HA instance on the same network are ignored. Messages older than about 1 s are dropped.
-- **Settings:** arbitration on/off, window length, and a "devices seen recently" list for troubleshooting.
+- **Settings:** arbitration on/off (default on), window length, group name, and a "devices seen recently" list for troubleshooting.
+- **Testing with one phone:** `tools/arbitration_peer.js` acts as another device from a computer on the same Wi-Fi (`listen` prints claims, `claim` sends one with a chosen score). Debug builds accept a `debug_detect` service action that acts as if the wake word was heard, with `score` and `snr` extras.
 - Acceptance: two or three devices in neighbouring rooms, wake word said once near one of them; in 10 of 10 tries exactly one device responds, and it is the nearest one in at least 9 of 10.
 
 ### 6.3 Record-only wake word

@@ -1,6 +1,9 @@
 package com.avshy.bayitvoice.wakeword
 
 import android.os.SystemClock
+import kotlin.math.log10
+import kotlin.math.max
+import kotlin.math.sqrt
 
 /**
  * Runs [engine] only while [EnergyVad] hears voice, replaying a pre-roll buffer when the gate
@@ -10,7 +13,12 @@ import android.os.SystemClock
 class WakeWordDetector(
     private val engine: WakeWordEngine,
     @Volatile var threshold: Float,
-    private val onDetected: (score: Float) -> Unit,
+    /**
+     * [snrDb] is how far the last second of audio rose above this device's noise floor: the
+     * proximity signal for multi-device arbitration. Measuring against the device's own floor
+     * cancels differences in microphone gain between phones.
+     */
+    private val onDetected: (score: Float, snrDb: Float) -> Unit,
     /** Called when the voice gate closes, with the highest score seen while it was open (tuning aid). */
     private val onUtteranceEnd: ((peakScore: Float) -> Unit)? = null,
 ) {
@@ -31,9 +39,15 @@ class WakeWordDetector(
         private set
     val noiseFloor: Double get() = vad.noiseFloor
 
+    /** Squared RMS of the last [LEVEL_FRAMES] frames, for the proximity measure. */
+    private val levels = DoubleArray(LEVEL_FRAMES)
+    private var levelIndex = 0
+
     fun onFrame(frame: ShortArray) {
         framesTotal++
         val voice = vad.isVoice(frame)
+        levels[levelIndex] = vad.lastRms * vad.lastRms
+        levelIndex = (levelIndex + 1) % LEVEL_FRAMES
         if (!gateOpen) {
             if (!voice) {
                 remember(frame)
@@ -73,7 +87,14 @@ class WakeWordDetector(
         val now = SystemClock.elapsedRealtime()
         if (now - lastDetectionAt < COOLDOWN_MS) return
         lastDetectionAt = now
-        onDetected(score)
+        onDetected(score, snrDb())
+    }
+
+    private fun snrDb(): Float {
+        var sum = 0.0
+        for (level in levels) sum += level
+        val rms = sqrt(sum / LEVEL_FRAMES)
+        return (20 * log10(rms / max(vad.noiseFloor, 1.0))).toFloat()
     }
 
     private fun remember(frame: ShortArray) {
@@ -90,5 +111,8 @@ class WakeWordDetector(
         const val HANGOVER_FRAMES = 19
 
         const val COOLDOWN_MS = 2_000L
+
+        /** About one second: the wake word itself. */
+        const val LEVEL_FRAMES = 12
     }
 }

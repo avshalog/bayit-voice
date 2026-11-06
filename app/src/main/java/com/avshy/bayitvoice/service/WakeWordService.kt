@@ -18,6 +18,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.arbitration.Claim
+import com.avshy.bayitvoice.arbitration.PeerArbiter
 import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.audio.MicRecorder
 import com.avshy.bayitvoice.audio.MicrophoneException
@@ -56,6 +58,7 @@ class WakeWordService : Service() {
     private var detector: WakeWordDetector? = null
     private var currentModelName: String? = null
     @Volatile private var micSilenced = false
+    private val arbiter by lazy { PeerArbiter(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -68,6 +71,11 @@ class WakeWordService : Service() {
             }
             ACTION_RELOAD -> if (listening != null) {
                 restart()
+                return START_NOT_STICKY
+            }
+            // Debug builds: act as if the wake word was heard, to test arbitration without speaking.
+            ACTION_DEBUG_DETECT -> if (BuildConfig.DEBUG && listening != null) {
+                onWakeWord(intent.getFloatExtra("score", 0.9f), intent.getFloatExtra("snr", 20f))
                 return START_NOT_STICKY
             }
         }
@@ -156,9 +164,29 @@ class WakeWordService : Service() {
         }
     }
 
-    private fun onWakeWord(score: Float) {
-        Log.i(TAG, "Wake word detected (score ${"%.2f".format(score)})")
+    private fun onWakeWord(score: Float, snrDb: Float) {
+        Log.i(TAG, "Wake word detected (score %.2f, %.1f dB above the noise floor)".format(score, snrDb))
+        // Stop wake-word capture right away, so the same word isn't detected again meanwhile.
         MicArbiter.requestSession()
+        val settings = AppSettings.get(this)
+        val groupId = settings.arbitrationGroupId
+        if (!settings.arbitrationEnabled || groupId == null) {
+            openSession()
+            return
+        }
+        scope.launch {
+            // Loudness above the device's own floor says most about distance; confidence breaks near-ties.
+            val mine = Claim(settings.deviceId, deviceName(), snrDb + PROXIMITY_CONFIDENCE_WEIGHT * score, System.currentTimeMillis())
+            if (arbiter.claim(Claim.groupKey(groupId), mine, settings.arbitrationWindowMs)) {
+                openSession()
+            } else {
+                // Another device is closer: stay silent and go back to listening.
+                MicArbiter.endSession()
+            }
+        }
+    }
+
+    private fun openSession() {
         SessionLauncher.openSession(this)
         // If the session UI never starts (e.g. the notification is ignored), resume listening.
         scope.launch {
@@ -166,6 +194,10 @@ class WakeWordService : Service() {
             if (!MicArbiter.sessionClaimed && MicArbiter.sessionActive.value) MicArbiter.endSession()
         }
     }
+
+    /** The name the user gave the device in system settings, else its model. */
+    private fun deviceName(): String =
+        android.provider.Settings.Global.getString(contentResolver, "device_name")?.takeIf { it.isNotBlank() } ?: Build.MODEL
 
     private fun buildNotification(modelName: String? = null): android.app.Notification {
         val open = PendingIntent.getActivity(
@@ -241,6 +273,10 @@ class WakeWordService : Service() {
         private const val TAG = "WakeWordService"
         private const val ACTION_STOP = "stop"
         private const val ACTION_RELOAD = "reload"
+        private const val ACTION_DEBUG_DETECT = "debug_detect"
+
+        /** dB of proximity per unit of detection confidence: 0.5 → 1.0 confidence adds 5 dB. */
+        private const val PROXIMITY_CONFIDENCE_WEIGHT = 10f
         private const val SESSION_CLAIM_TIMEOUT_MS = 20_000L
         private const val STATS_INTERVAL_MS = 60_000L
 

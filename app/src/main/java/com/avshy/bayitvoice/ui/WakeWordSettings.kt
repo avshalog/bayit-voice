@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
 import android.provider.Settings
+import android.text.format.DateUtils
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextDirection
@@ -38,6 +40,7 @@ import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.wakeword.WakeWordModel
+import kotlin.math.roundToLong
 
 /** Settings for the wake word, background behaviour and connection mode. */
 @Composable
@@ -134,6 +137,8 @@ fun WakeWordSettings(
         }
     }
 
+    ArbitrationSettings(state, viewModel)
+
     importUri?.let { uri ->
         NameDialog(
             title = R.string.wake_import_name,
@@ -155,6 +160,54 @@ fun WakeWordSettings(
             },
             onDismiss = { renaming = null },
         )
+    }
+}
+
+/** Several devices in one home: only the nearest answers (SPEC section 6.2). */
+@Composable
+private fun ArbitrationSettings(state: WakeWordUiState, viewModel: WakeWordViewModel) {
+    Text(stringResource(R.string.arbitration_title), style = MaterialTheme.typography.titleSmall)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.arbitration_enabled), modifier = Modifier.weight(1f))
+        Switch(checked = state.arbitrationEnabled, onCheckedChange = viewModel::setArbitrationEnabled)
+    }
+    Text(stringResource(R.string.arbitration_help), style = MaterialTheme.typography.bodySmall)
+    if (!state.arbitrationEnabled) return
+
+    Text(stringResource(R.string.arbitration_window, state.arbitrationWindowMs.toInt()))
+    Slider(
+        value = state.arbitrationWindowMs.toFloat(),
+        onValueChange = { viewModel.setArbitrationWindow((it / 50).roundToLong() * 50) },
+        onValueChangeFinished = viewModel::commitArbitrationWindow,
+        valueRange = 100f..1000f,
+        steps = 17,
+    )
+    Text(stringResource(R.string.arbitration_window_help), style = MaterialTheme.typography.bodySmall)
+
+    var group by remember(state.arbitrationGroupName) { mutableStateOf(state.arbitrationGroupName) }
+    OutlinedTextField(
+        value = group,
+        onValueChange = { group = it },
+        singleLine = true,
+        label = { Text(stringResource(R.string.arbitration_group)) },
+        modifier = Modifier.fillMaxWidth().onFocusChanged { if (!it.isFocused && group != state.arbitrationGroupName) viewModel.setArbitrationGroupName(group) },
+    )
+    Text(stringResource(R.string.arbitration_group_help), style = MaterialTheme.typography.bodySmall)
+
+    Text(stringResource(R.string.arbitration_peers), style = MaterialTheme.typography.titleSmall)
+    if (state.peers.isEmpty()) {
+        Text(stringResource(R.string.arbitration_no_peers), style = MaterialTheme.typography.bodySmall)
+    } else {
+        state.peers.forEach { peer ->
+            Text(
+                stringResource(
+                    R.string.arbitration_peer,
+                    peer.name,
+                    DateUtils.getRelativeTimeSpanString(peer.lastSeenMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
+                ),
+                style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Content),
+            )
+        }
     }
 }
 

@@ -3,7 +3,9 @@ package com.avshy.bayitvoice.config
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import com.avshy.bayitvoice.arbitration.PeerArbiter
 import com.avshy.bayitvoice.wakeword.WakeWordModels
+import java.security.SecureRandom
 
 /** How the HA WebSocket is held between sessions (SPEC section 7.3). */
 enum class ConnectionMode { KeepConnected, OnDemand }
@@ -83,6 +85,35 @@ class AppSettings private constructor(context: Context) {
             ?.let { runCatching { ConnectionMode.valueOf(it) }.getOrNull() } ?: ConnectionMode.KeepConnected
         set(value) = prefs.edit { putString(KEY_CONNECTION_MODE, value.name) }
 
+    /** Only the nearest device answers when several hear the wake word (SPEC section 6.2). */
+    var arbitrationEnabled: Boolean
+        get() = prefs.getBoolean(KEY_ARBITRATION, true)
+        set(value) = prefs.edit { putBoolean(KEY_ARBITRATION, value) }
+
+    /** How long to wait for other devices' claims after a detection. */
+    var arbitrationWindowMs: Long
+        get() = prefs.getLong(KEY_ARBITRATION_WINDOW, PeerArbiter.DEFAULT_WINDOW_MS)
+        set(value) = prefs.edit { putLong(KEY_ARBITRATION_WINDOW, value.coerceIn(100L, 1_000L)) }
+
+    /** Optional override of the group, for devices that reach the same HA by different addresses. */
+    var arbitrationGroupName: String?
+        get() = prefs.getString(KEY_ARBITRATION_GROUP, null)?.takeIf { it.isNotBlank() }
+        set(value) = prefs.edit { putString(KEY_ARBITRATION_GROUP, value?.trim()) }
+
+    /**
+     * Which devices arbitrate together: the group name if set, else the HA address. Null when
+     * neither exists. Normalized so small spelling differences don't split a home.
+     */
+    val arbitrationGroupId: String?
+        get() = arbitrationGroupName?.lowercase()?.let { "name:$it" }
+            ?: (homeServer ?: externalServer)?.base?.let { "ha:$it" }
+
+    /** This device's random, stable id for arbitration; never tied to the hardware. */
+    val deviceId: Long
+        get() = prefs.getLong(KEY_DEVICE_ID, 0L).takeIf { it != 0L }
+            ?: (SecureRandom().nextLong() and Long.MAX_VALUE).coerceAtLeast(1L)
+                .also { prefs.edit { putLong(KEY_DEVICE_ID, it) } }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -134,6 +165,10 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_WAKE_LOAD_FAILED = "wake_load_failed"
         private const val KEY_START_ON_BOOT = "start_on_boot"
         private const val KEY_CONNECTION_MODE = "connection_mode"
+        private const val KEY_ARBITRATION = "arbitration_enabled"
+        private const val KEY_ARBITRATION_WINDOW = "arbitration_window_ms"
+        private const val KEY_ARBITRATION_GROUP = "arbitration_group"
+        private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_HA_VERSION = "ha_version"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"
         private const val LEGACY_KEY_URL = "server_url"

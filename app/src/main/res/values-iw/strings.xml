@@ -87,6 +87,16 @@
     <string name="connection_keep_help">תגובה מהירה ביותר. חיבור אחד פתוח במצב המתנה.</string>
     <string name="connection_on_demand">חיבור לפי צורך</string>
     <string name="connection_on_demand_help">פעילות רקע מינימלית. התשובה הראשונה מעט איטית יותר.</string>
+    <string name="arbitration_title">כמה מכשירים באותו בית</string>
+    <string name="arbitration_enabled">רק המכשיר הקרוב עונה</string>
+    <string name="arbitration_help">כשכמה מכשירים שמחוברים לאותו Home Assistant שומעים את מילת ההפעלה, הם בודקים ביניהם דרך ה-Wi-Fi של הבית, ורק הקרוב ביותר עונה. אם אין מכשירים נוספים, שום דבר לא משתנה.</string>
+    <string name="arbitration_window">המתנה למכשירים אחרים: %1$d אלפיות שנייה</string>
+    <string name="arbitration_window_help">ארוך יותר בטוח יותר ברשת איטית, אבל הצליל מגיע מעט מאוחר יותר. ברירת מחדל: 300.</string>
+    <string name="arbitration_group">שם קבוצה (לא חובה)</string>
+    <string name="arbitration_group_help">מכשירים בודקים ביניהם כשהם משתמשים באותה כתובת של Home Assistant. אם הכתובות שונות, תנו לכולם את אותו שם קבוצה.</string>
+    <string name="arbitration_peers">מכשירים אחרים שנראו</string>
+    <string name="arbitration_no_peers">עדיין אין. מכשירים אחרים יופיעו כאן אחרי שישמעו את מילת ההפעלה יחד עם המכשיר הזה. אם מכשיר אף פעם לא מופיע, בדקו שכולם מחוברים לאותה רשת Wi-Fi, ושהנתב לא מבודד מכשירים זה מזה (כמו שקורה הרבה ברשתות אורחים).</string>
+    <string name="arbitration_peer">%1$s · %2$s</string>
     <string name="dialog_ok">אישור</string>
     <string name="dialog_cancel">ביטול</string>
     <string name="back">חזרה</string>

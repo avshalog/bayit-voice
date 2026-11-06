@@ -89,6 +89,16 @@
     <string name="connection_keep_help">Fastest response. Keeps one idle connection open.</string>
     <string name="connection_on_demand">Connect on demand</string>
     <string name="connection_on_demand_help">Least background activity. The first reply is slightly slower.</string>
+    <string name="arbitration_title">Several devices in one home</string>
+    <string name="arbitration_enabled">Only the nearest device answers</string>
+    <string name="arbitration_help">When several devices connected to the same Home Assistant hear the wake word, they check with each other over the home Wi-Fi, and only the nearest one answers. With no other devices, nothing changes.</string>
+    <string name="arbitration_window">Wait for other devices: %1$d ms</string>
+    <string name="arbitration_window_help">Longer is safer on a slow network, but the chime comes a little later. Default 300 ms.</string>
+    <string name="arbitration_group">Group name (optional)</string>
+    <string name="arbitration_group_help">Devices check with each other when they use the same Home Assistant address. If yours use different addresses, give them all the same group name.</string>
+    <string name="arbitration_peers">Other devices seen</string>
+    <string name="arbitration_no_peers">None yet. Other devices show up here after they hear the wake word together with this one. If one never does, check that all of them are on the same Wi-Fi network, and that the router does not isolate devices (as guest networks often do).</string>
+    <string name="arbitration_peer">%1$s · %2$s</string>
     <string name="dialog_ok">OK</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="back">Back</string>
