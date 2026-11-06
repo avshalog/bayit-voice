@@ -3,6 +3,7 @@ package com.avshy.bayitvoice.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ConnectionMode
@@ -11,6 +12,7 @@ import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.session.AssistSession
 import com.avshy.bayitvoice.session.SessionEnd
 import com.avshy.bayitvoice.session.SessionState
+import com.avshy.bayitvoice.session.WakeDetection
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -41,21 +43,28 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
      * Starts (or restarts) a conversation. [fromWakeWord] plays the listening chime first.
      * The wake-word service is paused while the conversation owns the microphone.
      */
-    fun startConversation(fromWakeWord: Boolean = false) {
+    fun startConversation(fromWakeWord: Boolean = false, detection: WakeDetection? = null) {
         cancelAutoClose()
         _closeRequested.value = false
         val previous = conversation
+        // Only a session opened by the wake word is arbitrated with other devices.
+        val arbitration = SessionArbitration.forSession(getApplication(), detection)
         conversation = viewModelScope.launch {
             previous?.cancelAndJoin()
             val end = try {
                 MicArbiter.beginSession()
-                session.converse(fromWakeWord)
+                session.converse(fromWakeWord, detection, arbitration)
             } finally {
                 MicArbiter.endSession()
             }
             when (end) {
                 SessionEnd.Completed -> scheduleAutoClose()
-                SessionEnd.Silent, SessionEnd.Yielded -> _closeRequested.value = true
+                SessionEnd.Silent -> _closeRequested.value = true
+                SessionEnd.Yielded -> {
+                    // Show which device is answering, then step aside.
+                    delay(ELSEWHERE_NOTICE_MS)
+                    _closeRequested.value = true
+                }
                 SessionEnd.Failed -> Unit
             }
         }
@@ -82,5 +91,9 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         if (ownConnection) connections.reset()
+    }
+
+    private companion object {
+        const val ELSEWHERE_NOTICE_MS = 1_500L
     }
 }

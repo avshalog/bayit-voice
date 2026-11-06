@@ -27,13 +27,13 @@ class PeerArbiter(context: Context) {
     private val app = context.applicationContext
 
     /**
-     * Returns true when this device should handle the wake word: it had the best claim, or
-     * nobody else answered, or the network gave no way to ask. Never throws.
+     * Returns the claim that beat this device's, or null when this device should answer: it had
+     * the best claim, or nobody else answered, or the network gave no way to ask. Never throws.
      */
-    suspend fun claim(groupKey: ByteArray, mine: Claim, windowMs: Long): Boolean = withContext(Dispatchers.IO) {
+    suspend fun claim(groupKey: ByteArray, mine: Claim, windowMs: Long): Claim? = withContext(Dispatchers.IO) {
         val nif = wifiInterface() ?: run {
             Log.i(TAG, "No Wi-Fi interface for arbitration; handling the wake word alone")
-            return@withContext true
+            return@withContext null
         }
         val lock = app.getSystemService(WifiManager::class.java)
             .createMulticastLock(TAG).apply { setReferenceCounted(false) }
@@ -76,19 +76,19 @@ class PeerArbiter(context: Context) {
             }
         } catch (e: Exception) {
             Log.w(TAG, "Arbitration failed (${e.javaClass.simpleName}: ${e.message}); handling the wake word alone")
-            return@withContext true
+            return@withContext null
         } finally {
             if (lock.isHeld) lock.release()
         }
 
         PeerLog(app).record(peers.values)
-        val winner = peers.values.firstOrNull { it.beats(mine) }
+        val winner = peers.values.filter { it.beats(mine) }.reduceOrNull { a, b -> if (a.beats(b)) a else b }
         Log.i(TAG, "Arbitration: mine %.1f vs %s -> %s".format(
             mine.score,
             if (peers.isEmpty()) "no peers" else peers.values.joinToString { "%s %.1f".format(it.deviceName, it.score) },
             if (winner == null) "handle it" else "${winner.deviceName} handles it",
         ))
-        winner == null
+        winner
     }
 
     /** The Wi-Fi interface: up, multicast-capable and with a private IPv4 address. */

@@ -38,7 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avshy.bayitvoice.R
-import com.avshy.bayitvoice.arbitration.ArbitrationGate
+import com.avshy.bayitvoice.session.WakeDetection
 import com.avshy.bayitvoice.service.SessionLauncher
 import com.avshy.bayitvoice.session.SessionError
 import kotlinx.coroutines.flow.first
@@ -49,13 +49,14 @@ class SessionActivity : ComponentActivity() {
     private val viewModel: SessionViewModel by viewModels()
 
     private var pendingFromWakeWord = false
+    private var pendingDetection: WakeDetection? = null
 
     /** Drives the sheet's slide in and out; the activity finishes once it has slid out. */
     private val sheetVisible = MutableTransitionState(false).apply { targetState = true }
 
     private val permissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         // The local network permission is optional: without it the external address is used.
-        if (isGranted(Manifest.permission.RECORD_AUDIO)) viewModel.startConversation(pendingFromWakeWord) else finish()
+        if (isGranted(Manifest.permission.RECORD_AUDIO)) viewModel.startConversation(pendingFromWakeWord, pendingDetection) else finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,13 +88,13 @@ class SessionActivity : ComponentActivity() {
             }
         }
 
-        if (savedInstanceState == null) startWithPermission(intent.isFromWakeWord())
+        if (savedInstanceState == null) startWithPermission(intent.isFromWakeWord(), SessionLauncher.detection(intent))
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         sheetVisible.targetState = true
-        startWithPermission(intent.isFromWakeWord())
+        startWithPermission(intent.isFromWakeWord(), SessionLauncher.detection(intent))
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
@@ -109,13 +110,13 @@ class SessionActivity : ComponentActivity() {
     private fun Intent.isFromWakeWord() =
         action == Intent.ACTION_ASSIST || getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
 
-    private fun startWithPermission(fromWakeWord: Boolean) {
-        // A key press picks this device; only a wake word heard by several devices is arbitrated.
-        if (intent.action == Intent.ACTION_ASSIST) ArbitrationGate.clear()
+    /** [detection] is set only for a wake word: a key press or mic tap picks this device, unarbitrated. */
+    private fun startWithPermission(fromWakeWord: Boolean, detection: WakeDetection? = null) {
         pendingFromWakeWord = fromWakeWord
+        pendingDetection = detection
         val needed = (arrayOf(Manifest.permission.RECORD_AUDIO) + viewModel.localNetworkPermissions())
             .filterNot(::isGranted)
-        if (needed.isEmpty()) viewModel.startConversation(fromWakeWord) else permissions.launch(needed.toTypedArray())
+        if (needed.isEmpty()) viewModel.startConversation(fromWakeWord, detection) else permissions.launch(needed.toTypedArray())
     }
 
     private fun isGranted(permission: String) =

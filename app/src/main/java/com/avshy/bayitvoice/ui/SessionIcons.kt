@@ -96,6 +96,7 @@ fun PhaseIcon(phase: SessionPhase, accent: Color, modifier: Modifier = Modifier)
                 LineIcon(IconPaths.home, accent, Modifier.graphicsLayer { translationY = bob * density })
             }
             SessionPhase.Done -> DoneCheck(SessionColors.done)
+            SessionPhase.Elsewhere -> LineIcon(IconPaths.home, accent)
             SessionPhase.Error -> {
                 val shake = remember { Animatable(0f) }
                 LaunchedEffect(Unit) {

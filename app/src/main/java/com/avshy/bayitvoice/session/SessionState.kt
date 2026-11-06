@@ -2,7 +2,8 @@ package com.avshy.bayitvoice.session
 
 import com.avshy.bayitvoice.ha.HaException
 
-enum class SessionPhase { Idle, Connecting, Listening, Thinking, Speaking, Done, Error }
+/** [Elsewhere]: another device nearer the speaker is answering this wake word. */
+enum class SessionPhase { Idle, Connecting, Listening, Thinking, Speaking, Done, Error, Elsewhere }
 
 /** Why a session failed. Mapped to localized strings by the UI. */
 sealed interface SessionError {
@@ -37,7 +38,28 @@ data class SessionState(
     val replyText: String = "",
     val error: SessionError? = null,
     val notice: SessionNotice? = null,
+    /** With [SessionPhase.Elsewhere]: the name of the device that is answering. */
+    val answeredBy: String? = null,
 )
+
+/**
+ * What the wake-word service measured when it heard the wake word, handed to the session it
+ * opened so the session can arbitrate with other devices (SPEC section 6.2).
+ */
+data class WakeDetection(
+    /** `SystemClock.elapsedRealtime()` at detection. */
+    val detectedAtMs: Long,
+    val score: Float,
+    /** dB the wake word rose above [noiseFloorRms]. */
+    val snrDb: Float,
+    /** The device's background level (RMS of 16-bit samples) just before the wake word. */
+    val noiseFloorRms: Double,
+)
+
+/** Decides, with the other devices, whether this one answers; null means it does, else the winner's name. */
+fun interface Arbitration {
+    suspend fun winnerElsewhere(commandSnrDb: Float?): String?
+}
 
 /** How a whole conversation ended. */
 enum class SessionEnd {
@@ -50,6 +72,6 @@ enum class SessionEnd {
     /** Stay open and show the error. */
     Failed,
 
-    /** Another device nearer the speaker took this wake word: close now, without a sound. */
+    /** Another device nearer the speaker answered: show who, briefly, then close without a sound. */
     Yielded,
 }

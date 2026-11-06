@@ -45,6 +45,7 @@
     <string name="phase_thinking">חושב</string>
     <string name="phase_speaking">בית</string>
     <string name="phase_error">משהו השתבש</string>
+    <string name="phase_elsewhere">עונה במכשיר: %1$s</string>
 
     <!-- Errors -->
     <string name="error_not_configured">הזן קודם כתובת שרת וטוקן גישה בהגדרות.</string>

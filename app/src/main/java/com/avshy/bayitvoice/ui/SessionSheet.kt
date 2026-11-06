@@ -71,14 +71,14 @@ fun SessionSheet(state: SessionState, onMic: () -> Unit, onClose: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).background(SessionColors.handle, CircleShape))
-        StatusRow(state.phase, onClose)
+        StatusRow(state.phase, state.answeredBy, onClose)
         Conversation(state)
         BottomSlot(state.phase, onMic)
     }
 }
 
 @Composable
-private fun StatusRow(phase: SessionPhase, onClose: () -> Unit) {
+private fun StatusRow(phase: SessionPhase, answeredBy: String?, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         PhaseIcon(phase, SessionColors.accent)
         Row(
@@ -86,7 +86,15 @@ private fun StatusRow(phase: SessionPhase, onClose: () -> Unit) {
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(stringResource(phaseLabel(phase)), color = SessionColors.text, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                if (phase == SessionPhase.Elsewhere) stringResource(R.string.phase_elsewhere, answeredBy.orEmpty())
+                else stringResource(phaseLabel(phase)),
+                color = SessionColors.text,
+                fontSize = 17.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.SemiBold,
+                style = TextStyle(textDirection = TextDirection.Content),
+            )
             if (phase == SessionPhase.Listening || phase == SessionPhase.Thinking) {
                 BouncingDots(SessionColors.accent, Modifier.padding(bottom = 6.dp))
             }
@@ -109,6 +117,7 @@ private fun phaseLabel(phase: SessionPhase) = when (phase) {
     SessionPhase.Thinking -> R.string.phase_thinking
     SessionPhase.Speaking, SessionPhase.Done -> R.string.phase_speaking
     SessionPhase.Error -> R.string.phase_error
+    SessionPhase.Elsewhere -> R.string.phase_elsewhere // formatted with the device name by the caller
 }
 
 @Composable

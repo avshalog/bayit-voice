@@ -47,6 +47,7 @@
     <string name="phase_thinking">Thinking</string>
     <string name="phase_speaking">Home</string>
     <string name="phase_error">Something went wrong</string>
+    <string name="phase_elsewhere">Answering on: %1$s</string>
 
     <!-- Errors -->
     <string name="error_not_configured">Enter the server address and access token in settings first.</string>
