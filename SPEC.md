@@ -204,7 +204,7 @@ When several devices running the app hear the same wake word, only the one close
 - **Graceful fallback:** if multicast is blocked (AP/client isolation, guest networks) or no peers answer, the device simply proceeds on its own after the window. Show a hint in settings when no peers were ever seen but the user expects several devices.
 - **Safety:** sign messages with an HMAC keyed by the group id, so devices of a different HA instance on the same network are ignored. Messages older than about 1 s are dropped.
 - **Settings:** arbitration on/off (default on), window length, group name, and a "devices seen recently" list for troubleshooting.
-- **Testing with one phone:** `tools/arbitration_peer.js` acts as another device from a computer on the same Wi-Fi (`listen` prints claims, `claim` sends one with a chosen score). Debug builds accept a `debug_detect` service action that acts as if the wake word was heard, with `score` and `snr` extras.
+- **Testing with one phone:** `tools/arbitration_peer.js` acts as another device from a computer on the same Wi-Fi (`listen` prints claims, `claim` sends one with a chosen score). Debug builds include an exported `DebugDetectReceiver` that acts as if the wake word was heard: `adb shell am broadcast -n <package>/.service.DebugDetectReceiver --ef score 0.9 --ef snr 20`.
 - Acceptance: two or three devices in neighbouring rooms, wake word said once near one of them; in 10 of 10 tries exactly one device responds, and it is the nearest one in at least 9 of 10.
 
 ### 6.3 Record-only wake word
