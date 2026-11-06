@@ -49,4 +49,7 @@ enum class SessionEnd {
 
     /** Stay open and show the error. */
     Failed,
+
+    /** Another device nearer the speaker took this wake word: close now, without a sound. */
+    Yielded,
 }

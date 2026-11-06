@@ -18,6 +18,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.arbitration.ArbitrationGate
 import com.avshy.bayitvoice.arbitration.Claim
 import com.avshy.bayitvoice.arbitration.PeerArbiter
 import com.avshy.bayitvoice.audio.MicArbiter
@@ -171,18 +172,18 @@ class WakeWordService : Service() {
         val settings = AppSettings.get(this)
         val groupId = settings.arbitrationGroupId
         if (!settings.arbitrationEnabled || groupId == null) {
+            ArbitrationGate.clear()
             openSession()
             return
         }
+        // The session opens and records at once; it sends nothing to HA until this device has
+        // won, and closes quietly if another device is closer.
+        ArbitrationGate.begin()
+        openSession()
         scope.launch {
             // Loudness above the device's own floor says most about distance; confidence breaks near-ties.
             val mine = Claim(settings.deviceId, deviceName(), snrDb + PROXIMITY_CONFIDENCE_WEIGHT * score, System.currentTimeMillis())
-            if (arbiter.claim(Claim.groupKey(groupId), mine, settings.arbitrationWindowMs)) {
-                openSession()
-            } else {
-                // Another device is closer: stay silent and go back to listening.
-                MicArbiter.endSession()
-            }
+            ArbitrationGate.resolve(arbiter.claim(Claim.groupKey(groupId), mine, settings.arbitrationWindowMs))
         }
     }
 
@@ -191,7 +192,10 @@ class WakeWordService : Service() {
         // If the session UI never starts (e.g. the notification is ignored), resume listening.
         scope.launch {
             delay(SESSION_CLAIM_TIMEOUT_MS)
-            if (!MicArbiter.sessionClaimed && MicArbiter.sessionActive.value) MicArbiter.endSession()
+            if (!MicArbiter.sessionClaimed && MicArbiter.sessionActive.value) {
+                MicArbiter.endSession()
+                ArbitrationGate.clear()
+            }
         }
     }
 

@@ -195,10 +195,11 @@ When several devices running the app hear the same wake word, only the one close
 - **Grouping:** devices arbitrate only with peers connected to the same HA server. The group id is the normalized HA URL (the home address if set, else the external one), and the HMAC key is its SHA-256. Optional user-set "group name" override for devices that reach the same HA by different addresses.
 - **Flow on detection:**
   1. Compute a proximity score: how far the last second of audio (the wake word) rose above the device's own noise floor, in dB, plus 10 × the detection confidence. Measuring against the device's own floor cancels differences in microphone gain between phones; loudness stays the main signal for "closest", and confidence breaks near-ties.
-  2. Stop wake-word capture and multicast the claim `{device_id, device_name, score, timestamp}`, repeating it every 80 ms so a device that detected slightly later still hears it.
+  2. Open the session UI at once, as without arbitration, and in parallel multicast the claim `{device_id, device_name, score, timestamp}`, repeating it every 80 ms so a device that detected slightly later still hears it.
   3. Listen for peer claims for a short window (default 300 ms, configurable 100 to 1,000 ms), then send the claim once more.
-  4. The highest score wins; ties go to the lowest `device_id`. The winner opens the session. Losers play nothing and resume wake-word listening.
-  - No audio is buffered during the window: the session starts after arbitration and plays its chime, and the user speaks after the chime, so nothing is lost. The window only delays the chime.
+  4. The highest score wins; ties go to the lowest `device_id`.
+  - The session never waits for arbitration before it opens or records: it chimes and starts recording right away, buffering the audio. Only the first `assist_pipeline/run` of a wake-word session waits for the result, so HA never hears a losing device and the command runs once. The winner then streams the buffered audio plus live audio. A loser sends nothing, closes its sheet and resumes wake-word listening. Opening the UI and connecting usually take longer than the window, so a loser normally knows it lost before its chime and stays silent.
+  - The side key or long-press home picks a device explicitly and is never arbitrated; only wake-word sessions are.
 - **Follow-ups:** a continue-conversation turn belongs to the device that won the original session; other devices ignore it.
 - **Graceful fallback:** if multicast is blocked (AP/client isolation, guest networks) or no peers answer, the device simply proceeds on its own after the window. Show a hint in settings when no peers were ever seen but the user expects several devices.
 - **Safety:** sign messages with an HMAC keyed by the group id, so devices of a different HA instance on the same network are ignored. Messages older than about 1 s are dropped.

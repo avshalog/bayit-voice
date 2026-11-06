@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.arbitration.ArbitrationGate
 import com.avshy.bayitvoice.service.SessionLauncher
 import com.avshy.bayitvoice.session.SessionError
 import kotlinx.coroutines.flow.first
@@ -109,6 +110,8 @@ class SessionActivity : ComponentActivity() {
         action == Intent.ACTION_ASSIST || getBooleanExtra(SessionLauncher.EXTRA_FROM_WAKE_WORD, false)
 
     private fun startWithPermission(fromWakeWord: Boolean) {
+        // A key press picks this device; only a wake word heard by several devices is arbitrated.
+        if (intent.action == Intent.ACTION_ASSIST) ArbitrationGate.clear()
         pendingFromWakeWord = fromWakeWord
         val needed = (arrayOf(Manifest.permission.RECORD_AUDIO) + viewModel.localNetworkPermissions())
             .filterNot(::isGranted)

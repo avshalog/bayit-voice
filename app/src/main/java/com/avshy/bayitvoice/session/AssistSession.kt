@@ -1,6 +1,7 @@
 package com.avshy.bayitvoice.session
 
 import android.util.Log
+import com.avshy.bayitvoice.arbitration.ArbitrationGate
 import com.avshy.bayitvoice.audio.Chime
 import com.avshy.bayitvoice.audio.MicRecorder
 import com.avshy.bayitvoice.audio.MicrophoneException
@@ -45,6 +46,7 @@ class AssistSession(
     private sealed interface TurnOutcome {
         data class Succeeded(val conversationId: String?, val continueConversation: Boolean) : TurnOutcome
         data object NoSpeech : TurnOutcome
+        data object Yielded : TurnOutcome
         data class Failed(val error: SessionError) : TurnOutcome
     }
 
@@ -64,10 +66,17 @@ class AssistSession(
             var followUp = false
             // Hands-free turns (after a wake word or a follow-up question) end quietly on silence.
             var handsFree = fromWakeWord
+            // Skip the chime when the nearer device is already known to be another one.
+            if (fromWakeWord && ArbitrationGate.lost) return yieldToPeer()
             if (fromWakeWord && settings.chimeEnabled) Chime.play()
+            // Only the first turn of a wake-word session waits for the arbitration result.
+            var awaitArbitration = fromWakeWord
             while (true) {
                 if (followUp && settings.chimeEnabled) Chime.play()
-                when (val turn = runTurn(server, pipelineId, conversationId, handsFree)) {
+                val turn = runTurn(server, pipelineId, conversationId, handsFree, awaitArbitration)
+                awaitArbitration = false
+                when (turn) {
+                    TurnOutcome.Yielded -> return yieldToPeer()
                     is TurnOutcome.Failed -> return fail(turn.error)
                     TurnOutcome.NoSpeech ->
                         return if (handsFree) {
@@ -131,6 +140,7 @@ class AssistSession(
         pipelineId: String?,
         conversationId: String?,
         handsFree: Boolean,
+        awaitArbitration: Boolean,
     ): TurnOutcome {
         _state.update { it.copy(phase = SessionPhase.Listening, userText = "", replyText = "", error = null) }
 
@@ -140,7 +150,6 @@ class AssistSession(
             .put("input", JSONObject().put("sample_rate", MicRecorder.SAMPLE_RATE))
         pipelineId?.let { request.put("pipeline", it) }
         conversationId?.let { request.put("conversation_id", it) }
-        val runId = client.send("assist_pipeline/run", request)
 
         var errorCode: String? = null
         var errorMessage = ""
@@ -150,9 +159,17 @@ class AssistSession(
         var ttsUrl: String? = null
         var heardNoSpeech = false
 
+        var yielded = false
         val finished = coroutineScope {
+            // Recording starts now, so nothing said meanwhile is lost; audio is buffered until HA
+            // is ready, and HA hears nothing at all if another device wins the arbitration.
             val streamer = AudioStreamer(this)
             try {
+                if (awaitArbitration && !ArbitrationGate.awaitWin()) {
+                    yielded = true
+                    return@coroutineScope true
+                }
+                val runId = client.send("assist_pipeline/run", request)
                 withTimeoutOrNull(RUN_TIMEOUT_MS) {
                     client.awaitResult(runId)
                     var timer: Job? = null
@@ -218,6 +235,7 @@ class AssistSession(
             }
         }
 
+        if (yielded) return TurnOutcome.Yielded
         if (!finished) return TurnOutcome.Failed(SessionError.Timeout)
         errorCode?.let { code ->
             Log.i(TAG, "Pipeline error: $code")
@@ -283,6 +301,12 @@ class AssistSession(
             recorder.cancel()
             if (!handlerId.isCompleted) sender.cancel()
         }
+    }
+
+    private fun yieldToPeer(): SessionEnd {
+        Log.i(TAG, "Another device is nearer; closing without sending anything to HA")
+        ArbitrationGate.clear()
+        return SessionEnd.Yielded
     }
 
     private fun fail(error: SessionError): SessionEnd {

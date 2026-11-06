@@ -55,7 +55,7 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
             }
             when (end) {
                 SessionEnd.Completed -> scheduleAutoClose()
-                SessionEnd.Silent -> _closeRequested.value = true
+                SessionEnd.Silent, SessionEnd.Yielded -> _closeRequested.value = true
                 SessionEnd.Failed -> Unit
             }
         }
