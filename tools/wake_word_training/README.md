@@ -73,3 +73,7 @@ To train with them, point `REAL_CLIPS` at the clips folder (on Colab: zip the cl
 - ends with **REAL RECALL**: the share of held-out clips whose peak score reaches 0.5, per source and overall. This is the number to compare between runs, not the synthetic recall.
 
 Keep several speakers in the recordings: more voices help more than more repetitions of one voice.
+
+| Run | Real clips | Synthetic accuracy | Synthetic recall | False positives/hour | REAL RECALL (held out) |
+|---|---|---|---|---|---|
+| `hey_bayit` + real clips (2026-11-06) | 146 × 15 from 5 recordings, 3 speakers | 0.705 | 0.409 | 0.265 | 30/36 (0.83) |

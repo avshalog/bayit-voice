@@ -244,20 +244,26 @@ sha256sum "$OUT"
 # the trained model the way the app streams audio (80 ms frames); a clip counts as detected when
 # its peak score reaches 0.5, the app's default threshold.
 step real_recall
+# openwakeword.Model can't be used here: the current repository's model.py calls a package
+# function its __init__ no longer has. The feature extractor plus onnxruntime do the same work:
+# one 96-value embedding per 80 ms frame, and the model scores each window of n frames.
 python3 - "$ONNX" <<'EOF' || fail real_recall
-import os, sys, numpy as np, soundfile as sf
+import os, sys, numpy as np, soundfile as sf, onnxruntime as ort
 if not os.path.isdir("real_holdout") or not os.listdir("real_holdout"):
     print("no held-out real clips")
     raise SystemExit(0)
-from openwakeword.model import Model
-m = Model(wakeword_models=[sys.argv[1]], inference_framework="onnx")
-key = list(m.models.keys())[0]
+from openwakeword.utils import AudioFeatures
+features = AudioFeatures(inference_framework="onnx")
+model = ort.InferenceSession(sys.argv[1])
+inp = model.get_inputs()[0]
+n = inp.shape[1]
 by_source, peaks = {}, []
 for f in sorted(os.listdir("real_holdout")):
     a, _ = sf.read(os.path.join("real_holdout", f), dtype="int16")
     a = np.concatenate([np.zeros(16000, np.int16), a, np.zeros(16000, np.int16)])
-    m.reset()
-    peak = max(m.predict(a[i:i + 1280])[key] for i in range(0, len(a) - 1279, 1280))
+    e = features.embed_clips(a[None, :], batch_size=1)[0].astype(np.float32)
+    # The exported model takes a batch of exactly one window.
+    peak = max(float(model.run(None, {inp.name: e[None, i:i + n]})[0].max()) for i in range(len(e) - n + 1))
     peaks.append(peak)
     by_source.setdefault(f.rsplit("_", 1)[0], []).append(peak)
 for s, p in sorted(by_source.items()):
