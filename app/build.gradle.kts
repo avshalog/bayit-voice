@@ -53,6 +53,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.litert)
+    // X25519 and ChaCha20-Poly1305 for the ESPHome API's Noise encryption (the platform has no X25519 below API 31).
+    implementation(libs.bouncycastle)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.runner)

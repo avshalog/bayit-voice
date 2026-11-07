@@ -23,7 +23,9 @@ import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.audio.MicRecorder
 import com.avshy.bayitvoice.audio.MicrophoneException
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ConnectionMode
+import com.avshy.bayitvoice.satellite.SatelliteDevice
 import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.wakeword.WakeWordDetector
 import com.avshy.bayitvoice.wakeword.WakeWordEngine
@@ -76,6 +78,19 @@ class WakeWordService : Service() {
                 onWakeWord(intent.getFloatExtra("score", 0.9f), intent.getFloatExtra("snr", 20f))
                 return START_NOT_STICKY
             }
+            // Debug builds: switch between direct and satellite mode until settings have a control for it.
+            ACTION_DEBUG_LINK -> if (BuildConfig.DEBUG) {
+                val link = runCatching { AssistLink.valueOf(intent.getStringExtra("link").orEmpty()) }.getOrNull()
+                if (link != null) AppSettings.get(this).assistLink = link
+                if (listening != null) restart()
+                return START_NOT_STICKY
+            }
+            // Debug builds: put the satellite key on the clipboard, to paste into HA, until settings show it.
+            ACTION_DEBUG_COPY_KEY -> if (BuildConfig.DEBUG) {
+                val clip = android.content.ClipData.newPlainText("ESPHome key", AppSettings.get(this).satelliteKey)
+                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(clip)
+                return START_NOT_STICKY
+            }
         }
         if (!goForeground()) return START_NOT_STICKY
         if (listening == null) restart()
@@ -86,6 +101,7 @@ class WakeWordService : Service() {
         getSystemService(AudioManager::class.java).unregisterAudioRecordingCallback(recordingCallback)
         // Wait (at most one 80 ms frame) for capture to stop before freeing the native models.
         runBlocking { listening?.cancelAndJoin() }
+        SatelliteDevice.get(this).stop()
         scope.cancel()
         engine?.close()
         isRunning = false
@@ -144,10 +160,31 @@ class WakeWordService : Service() {
                 if (!sessionActive) capture(newEngine.frameSamples, newDetector)
             }
         }
-        if (settings.connectionMode == ConnectionMode.KeepConnected && settings.isConfigured) {
-            connection = scope.launch { ConnectionManager.shared(this@WakeWordService).keepAlive() }
+        val satellite = SatelliteDevice.get(this)
+        if (settings.assistLink == AssistLink.Satellite) {
+            satellite.wakeWords = SatelliteWakeWords(this)
+            satellite.start(scope)
+            satellite.sendConfiguration()
+        } else {
+            satellite.stop()
+            if (settings.connectionMode == ConnectionMode.KeepConnected && settings.isConfigured) {
+                connection = scope.launch { ConnectionManager.shared(this@WakeWordService).keepAlive() }
+            }
         }
         updateNotification(model.name)
+    }
+
+    /** The installed wake-word models, offered to HA; choosing one in HA switches to it. */
+    private class SatelliteWakeWords(private val service: Context) : SatelliteDevice.WakeWords {
+        private val settings = AppSettings.get(service)
+        override fun available() = WakeWordModels(service).all().map { it.id to it.name }
+        override fun activeId() = settings.wakeModelId
+        override fun activate(id: String) {
+            if (WakeWordModels(service).find(id) == null) return
+            Log.i(TAG, "HA switched the wake word to $id")
+            settings.wakeModelId = id
+            reload(service)
+        }
     }
 
     private suspend fun capture(frameSamples: Int, detector: WakeWordDetector) {
@@ -251,6 +288,8 @@ class WakeWordService : Service() {
         private const val ACTION_STOP = "stop"
         private const val ACTION_RELOAD = "reload"
         private const val ACTION_DEBUG_DETECT = "debug_detect"
+        private const val ACTION_DEBUG_LINK = "debug_link"
+        private const val ACTION_DEBUG_COPY_KEY = "debug_copy_key"
 
         private const val SESSION_CLAIM_TIMEOUT_MS = 20_000L
         private const val STATS_INTERVAL_MS = 60_000L

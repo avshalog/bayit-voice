@@ -9,6 +9,12 @@ import java.security.SecureRandom
 /** How the HA WebSocket is held between sessions (SPEC section 7.3). */
 enum class ConnectionMode { KeepConnected, OnDemand }
 
+/**
+ * How this device reaches HA (SPEC section 10): [Direct] is the app's own WebSocket client;
+ * [Satellite] makes it an ESPHome voice satellite that HA connects to.
+ */
+enum class AssistLink { Direct, Satellite }
+
 /** How a conversation is shown (SPEC section 5.1): the wave sheet, the orb sheet, or the whole screen. */
 enum class SessionStyle { Wave, Futuristic, FullScreen }
 
@@ -122,6 +128,27 @@ class AppSettings private constructor(context: Context) {
             ?: (SecureRandom().nextLong() and Long.MAX_VALUE).coerceAtLeast(1L)
                 .also { prefs.edit { putLong(KEY_DEVICE_ID, it) } }
 
+    var assistLink: AssistLink
+        get() = prefs.getString(KEY_ASSIST_LINK, null)
+            ?.let { runCatching { AssistLink.valueOf(it) }.getOrNull() } ?: AssistLink.Direct
+        set(value) = prefs.edit { putString(KEY_ASSIST_LINK, value.name) }
+
+    /** The satellite's Noise key, base64 of 32 random bytes; created on first use, kept encrypted. */
+    val satelliteKey: String
+        get() = secrets.get(KEY_SATELLITE_KEY) ?: run {
+            val key = ByteArray(32).also { SecureRandom().nextBytes(it) }
+            android.util.Base64.encodeToString(key, android.util.Base64.NO_WRAP)
+                .also { secrets.put(KEY_SATELLITE_KEY, it) }
+        }
+
+    /** A random, locally administered MAC address that names this satellite to HA; 12 lowercase hex digits. */
+    val satelliteMac: String
+        get() = prefs.getString(KEY_SATELLITE_MAC, null) ?: run {
+            val bytes = ByteArray(6).also { SecureRandom().nextBytes(it) }
+            bytes[0] = ((bytes[0].toInt() and 0xFC) or 0x02).toByte() // unicast, locally administered
+            bytes.joinToString("") { "%02x".format(it) }.also { prefs.edit { putString(KEY_SATELLITE_MAC, it) } }
+        }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -182,6 +209,9 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_SESSION_STYLE = "session_style"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_HA_VERSION = "ha_version"
+        private const val KEY_ASSIST_LINK = "assist_link"
+        private const val KEY_SATELLITE_KEY = "satellite_key"
+        private const val KEY_SATELLITE_MAC = "satellite_mac"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"
         private const val LEGACY_KEY_URL = "server_url"
         private const val LEGACY_SECRETS_FILE = "secrets"
