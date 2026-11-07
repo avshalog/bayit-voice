@@ -292,14 +292,46 @@ Acceptance:
 - mDNS discovery (section 3.1).
 - Settings export/import.
 - Per-stage latency logging in debug builds.
+- Satellite mode (section 10): ESPHome API server with Noise encryption, mDNS, voice assistant, timers (local countdown and alarm), announcements, wake-word configuration, optional timer sensor; connection-mode setting.
+
+Satellite-mode acceptance:
+
+- HA discovers the device; adding it with the key works; a wrong key is refused.
+- "Set a timer for 1 minute" in Hebrew starts a timer for that device only; it rings on that device only, wakes the screen from idle, and stops by voice or touch.
+- "How much time is left" and "cancel the timer" work by voice.
+- `assist_satellite.announce` plays on the device.
+- "Turn off the light here" acts on the device's area.
+- Wi-Fi off for 30 s and back: HA reconnects by itself, and a running timer still rings on time.
+- Direct mode keeps passing the Phase 1 checks.
 
 ### Phase 4: Optional
+
+- Merge the Full screen session style with an idle satellite screen (clock, active timers, announcements), so a fixed device needs no separate clock app. Show a design first.
 
 - Record-only experimental wake word (section 6.1).
 - microWakeWord engine behind the `WakeWordEngine` interface, if measurements show it is worth it (lower CPU, or better accuracy with its available models).
 
 ## 9. Known limitations and open questions
 
-- A raw WebSocket client is **not** registered in HA as an `assist_satellite` device. That means no `assist_satellite.announce` to this device, and no area-aware commands like "turn off the light here". If that becomes important, evaluate implementing the ESPHome voice-assistant protocol instead, or check whether the current `assist_pipeline/run` accepts a device id.
+- In direct mode the app is a raw WebSocket client, **not** an `assist_satellite` device: no HA timers, no `assist_satellite.announce`, no area-aware commands like "turn off the light here". Satellite mode (section 10) provides these; direct mode stays for use away from home.
 - `continue_conversation` depends on the conversation agent. HA sets it when the agent's reply ends with a question; agents that phrase questions differently will need a tap.
 - Credentials must never be committed to git. Keep developer test values out of the repo (for example in an ignored `local.properties`) if any are needed at all.
+
+## 10. Satellite mode (Phase 3)
+
+Registers the app in HA as a real voice satellite, so HA's built-in timers, announcements and area-aware commands work for every user with no per-home automations. Research and sources: `docs/satellite-mode-research.md`.
+
+- **Protocol: the ESPHome native API**, not Wyoming. The Wyoming satellite was archived in January 2026 and its successor (OHF's Linux Voice Assistant) uses ESPHome; ESPHome also has start/continue conversation and wake-word configuration that Wyoming lacks.
+- **Connection mode, per device** (setting):
+  - *Satellite* (recommended for a device fixed at home): the app is an ESPHome API server. HA owns the pipeline choice, the area and the active wake word (on the device's page in HA). No HA URL or token is needed.
+  - *Direct*: today's WebSocket client (sections 3 and 4). The only mode that works away from home, since in satellite mode HA must reach the device on the local network.
+- **Server:** TCP port 6053, advertised as `_esphomelib._tcp` with `NsdManager`. HA discovers it, or the user adds IP:port by hand. In HA's protocol naming HA is the client and the device the server.
+- **Encryption:** always on. The app generates a 32-byte key on first use and shows it with a copy button; HA asks for it when adding the device. Noise (`Noise_NNpsk0_25519_ChaChaPoly_SHA256`) on X25519, ChaCha20-Poly1305 and SHA-256 from a library (BouncyCastle or Tink; the platform has no ChaCha20 below API 28). Verify the handshake details against `aioesphomeapi` before coding. A key also allows HA 2026.10+ to accept connections the device opens itself (TCP 6054), for networks where HA cannot reach the device.
+- **Messages:** `api.proto` from `esphome/aioesphomeapi` (MIT), protobuf-lite. The device answers hello, ping, disconnect, device info (with the voice-assistant feature flags for voice assistant, API audio, timers, announce and start conversation; bit values from `api.proto`), and lists entities. Voice: `VoiceAssistantRequest` to start a run (with `conversation_id` and the wake-word phrase), mic audio as `VoiceAssistantAudio`, pipeline events as `VoiceAssistantEventResponse` (STT text, intent end with `continue_conversation`, TTS URL), which drive the same session UI as today.
+- **Timers:** HA owns timers and sends started / updated / cancelled / finished events with total and remaining seconds. The listening service keeps a local countdown on `AlarmManager` (exact, allowed while idle), so a dropped connection or Doze does not delay the end. On finish the service plays the app's bundled alarm sound at once and opens a timer screen over the lock screen and other apps (the same `SYSTEM_ALERT_WINDOW` path as the session UI). It rings until "stop" by voice or a touch, then closes. Optional: a sensor entity with the active timer and its remaining time, for dashboards and automations.
+- **Announcements:** `VoiceAssistantAnnounceRequest` (media URL, text, pre-announce sound, `start_conversation`) opens the session UI, plays it, optionally starts listening, then sends `AnnounceFinished`.
+- **Wake words:** the app reports its installed models in `VoiceAssistantConfigurationResponse`; choosing one in HA switches the active model.
+- **Unchanged:** wake-word engine and VAD gate, multi-device arbitration (HA does not arbitrate between satellites), session UI styles, auto-close, continue conversation, audio hygiene.
+- **New UI** (show designs before building): satellite pairing (status, IP:port, key), timer countdown and ringing screen.
+- **Resources:** one idle TCP socket and an mDNS registration; no extra wake locks; the service stays UI-free (section 7).
+- Ava (`brownard/Ava`, Apache-2.0) is an existing Android ESPHome satellite; use it as a reference for message order and HA quirks, keeping its notice if any code is reused.
