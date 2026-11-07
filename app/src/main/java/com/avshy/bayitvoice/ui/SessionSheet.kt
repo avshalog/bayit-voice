@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,17 +88,19 @@ fun SessionSheet(state: SessionState, futuristic: Boolean, onMic: () -> Unit, on
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).background(SessionColors.handle, CircleShape))
-        StatusRow(state.phase, state.answeredBy, showDots = !futuristic, onClose)
-        Conversation(state, translucentBubble = futuristic)
+        StatusRow(state.phase, state.answeredBy, showIcons = !futuristic, onClose)
+        // The futuristic sheet keeps one more line of reply clear of the orb.
+        Conversation(state, translucentBubble = futuristic, minHeight = if (futuristic) 136.dp else 110.dp)
         // The orb is drawn behind the conversation, so it may rise under the text.
         if (futuristic) OrbSlot(state.phase, onMic, Modifier.zIndex(-1f)) else BottomSlot(state.phase, onMic)
     }
 }
 
 @Composable
-private fun StatusRow(phase: SessionPhase, answeredBy: String?, showDots: Boolean, onClose: () -> Unit) {
+private fun StatusRow(phase: SessionPhase, answeredBy: String?, showIcons: Boolean, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        PhaseIcon(phase, SessionColors.accent)
+        // The futuristic orb already shows the phase, so it has no animated status icons.
+        if (showIcons) PhaseIcon(phase, SessionColors.accent)
         Row(
             Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.Bottom,
@@ -112,7 +115,7 @@ private fun StatusRow(phase: SessionPhase, answeredBy: String?, showDots: Boolea
                 fontWeight = FontWeight.SemiBold,
                 style = TextStyle(textDirection = TextDirection.Content),
             )
-            if (showDots && (phase == SessionPhase.Listening || phase == SessionPhase.Thinking)) {
+            if (showIcons && (phase == SessionPhase.Listening || phase == SessionPhase.Thinking)) {
                 BouncingDots(SessionColors.accent, Modifier.padding(bottom = 6.dp))
             }
         }
@@ -138,10 +141,10 @@ internal fun phaseLabel(phase: SessionPhase) = when (phase) {
 }
 
 @Composable
-private fun Conversation(state: SessionState, translucentBubble: Boolean) {
+private fun Conversation(state: SessionState, translucentBubble: Boolean, minHeight: Dp) {
     val contentStyle = TextStyle(textDirection = TextDirection.Content)
     Column(
-        Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 260.dp).verticalScroll(rememberScrollState()),
+        Modifier.fillMaxWidth().heightIn(min = minHeight, max = 260.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         AnimatedVisibility(state.userText.isNotEmpty(), enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { it / 4 }) {
