@@ -88,7 +88,7 @@ fun SessionSheet(state: SessionState, futuristic: Boolean, onMic: () -> Unit, on
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(36.dp, 4.dp).background(SessionColors.handle, CircleShape))
-        StatusRow(state.phase, state.answeredBy, showIcons = !futuristic, onClose)
+        StatusRow(state.phase, state.answeredBy, animated = !futuristic, onClose)
         // The futuristic sheet keeps one more line of reply clear of the orb.
         Conversation(state, translucentBubble = futuristic, minHeight = if (futuristic) 136.dp else 110.dp)
         // The orb is drawn behind the conversation, so it may rise under the text.
@@ -97,10 +97,10 @@ fun SessionSheet(state: SessionState, futuristic: Boolean, onMic: () -> Unit, on
 }
 
 @Composable
-private fun StatusRow(phase: SessionPhase, answeredBy: String?, showIcons: Boolean, onClose: () -> Unit) {
+private fun StatusRow(phase: SessionPhase, answeredBy: String?, animated: Boolean, onClose: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        // The futuristic orb already shows the phase, so it has no animated status icons.
-        if (showIcons) PhaseIcon(phase, SessionColors.accent)
+        // The futuristic sheet keeps its status icons still and in one colour; the orb carries the motion.
+        if (animated) PhaseIcon(phase, SessionColors.accent) else StaticPhaseIcon(phase, SessionColors.accent)
         Row(
             Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.Bottom,
@@ -115,7 +115,7 @@ private fun StatusRow(phase: SessionPhase, answeredBy: String?, showIcons: Boole
                 fontWeight = FontWeight.SemiBold,
                 style = TextStyle(textDirection = TextDirection.Content),
             )
-            if (showIcons && (phase == SessionPhase.Listening || phase == SessionPhase.Thinking)) {
+            if (animated && (phase == SessionPhase.Listening || phase == SessionPhase.Thinking)) {
                 BouncingDots(SessionColors.accent, Modifier.padding(bottom = 6.dp))
             }
         }

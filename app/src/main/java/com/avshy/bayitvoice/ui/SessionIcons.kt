@@ -160,3 +160,18 @@ fun BouncingDots(color: Color, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** The same icons as [PhaseIcon], drawn still and all in [accent] (errors stay in the error colour). */
+@Composable
+fun StaticPhaseIcon(phase: SessionPhase, accent: Color, modifier: Modifier = Modifier) {
+    Box(modifier.size(28.dp), contentAlignment = Alignment.Center) {
+        when (phase) {
+            SessionPhase.Idle, SessionPhase.Listening -> LineIcon(IconPaths.mic, accent, size = 20.dp, width = 2.2f)
+            SessionPhase.Connecting -> LineIcon(IconPaths.connecting, accent)
+            SessionPhase.Thinking -> LineIcon(IconPaths.thinking, accent)
+            SessionPhase.Speaking, SessionPhase.Elsewhere -> LineIcon(IconPaths.home, accent)
+            SessionPhase.Done -> LineIcon(listOf(IconPaths.CHECK), accent, width = 2.6f)
+            SessionPhase.Error -> LineIcon(IconPaths.warning, SessionColors.error)
+        }
+    }
+}
