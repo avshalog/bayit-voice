@@ -220,9 +220,12 @@ private fun SettingsScreen(
                 }
             }
 
-            HorizontalDivider()
-            SectionTitle(R.string.settings_section_session_style)
-            SessionStylePicker(state.sessionStyle, viewModel::setSessionStyle)
+            // A satellite always converses full screen (AppSettings.effectiveSessionStyle).
+            if (!satellite) {
+                HorizontalDivider()
+                SectionTitle(R.string.settings_section_session_style)
+                SessionStylePicker(state.sessionStyle, viewModel::setSessionStyle)
+            }
 
             HorizontalDivider()
             SectionTitle(R.string.settings_section_behaviour)

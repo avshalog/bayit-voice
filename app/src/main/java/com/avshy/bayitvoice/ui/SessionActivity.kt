@@ -70,7 +70,7 @@ class SessionActivity : ComponentActivity() {
         // The sheet's own colour runs under the navigation bar; no system scrim over it.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) window.isNavigationBarContrastEnforced = false
         showOverLockScreen()
-        val style = AppSettings.get(this).sessionStyle
+        val style = AppSettings.get(this).effectiveSessionStyle
         if (style == SessionStyle.FullScreen) hideSystemBars()
 
         setContent {

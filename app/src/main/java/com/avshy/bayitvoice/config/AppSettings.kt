@@ -122,6 +122,13 @@ class AppSettings private constructor(context: Context) {
             ?.let { runCatching { SessionStyle.valueOf(it) }.getOrNull() } ?: SessionStyle.Wave
         set(value) = prefs.edit { putString(KEY_SESSION_STYLE, value.name) }
 
+    /**
+     * The style a conversation is shown in: a satellite is a device fixed in the home, so it is
+     * always full screen; the chosen [sessionStyle] stays saved for the direct link.
+     */
+    val effectiveSessionStyle: SessionStyle
+        get() = if (assistLink == AssistLink.Satellite) SessionStyle.FullScreen else sessionStyle
+
     /** This device's random, stable id for arbitration; never tied to the hardware. */
     val deviceId: Long
         get() = prefs.getLong(KEY_DEVICE_ID, 0L).takeIf { it != 0L }
