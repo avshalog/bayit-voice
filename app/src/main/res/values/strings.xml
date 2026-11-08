@@ -138,4 +138,31 @@
     <string name="about_models_license">The built-in wake word models and the openWakeWord feature models (melspectrogram, embedding) are by David Scripka (openWakeWord) and are licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0). They may not be used for commercial purposes. The openWakeWord code is licensed under Apache 2.0.</string>
     <string name="about_libraries_title">Libraries</string>
     <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX and Jetpack Compose, Kotlin coroutines: Apache License 2.0. The animated orb is based on thinking-orbs by Jakub Antalik: MIT License.</string>
+<!-- Connection mode (SPEC section 10) -->
+    <string name="settings_section_link">Connection to Home Assistant</string>
+    <string name="link_satellite">Satellite</string>
+    <string name="link_direct">Direct</string>
+    <string name="link_satellite_help">Timers, announcements and \"here\". HA connects to this device.</string>
+    <string name="link_direct_help">The app connects to HA with the address and token below.</string>
+    <string name="link_status_connected">Connected to HA</string>
+    <string name="link_status_waiting">Waiting to be added in HA</string>
+    <string name="link_status_needs_listening">Turn on wake word listening so HA can connect</string>
+    <string name="link_device_name">Device name in HA</string>
+    <string name="link_key">Encryption key</string>
+    <string name="link_copy_key">Copy</string>
+    <string name="link_pair_help">In HA: Settings › Devices and services › Discovered › Add, and paste the key.</string>
+    <string name="error_satellite_not_connected">HA is not connected to this device. Add it in HA (Settings › Devices and services), or check that both are on the same network.</string>
+
+    <!-- Timers -->
+    <string name="timer_default_name">Timer</string>
+    <string name="timer_finished_text">%1$s timer finished</string>
+    <string name="timer_stop">Stop</string>
+    <string name="timer_cancel">Cancel timer</string>
+    <string name="timer_close">Close</string>
+    <string name="timer_stop_hint">Or say the wake word</string>
+    <string name="timer_more">+%1$d</string>
+    <string name="notification_timer_title">Timer finished</string>
+    <plurals name="duration_hours"><item quantity="one">1 hour</item><item quantity="other">%d hours</item></plurals>
+    <plurals name="duration_minutes"><item quantity="one">1 minute</item><item quantity="other">%d minutes</item></plurals>
+    <plurals name="duration_seconds"><item quantity="one">1 second</item><item quantity="other">%d seconds</item></plurals>
 </resources>

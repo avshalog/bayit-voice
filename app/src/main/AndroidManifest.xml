@@ -61,6 +61,18 @@
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />
 
+        <!-- Timers set by HA in satellite mode: the ringing / running screen and the chip over other apps. -->
+        <activity
+            android:name=".ui.timer.TimerActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=".timer" />
+
+        <service
+            android:name=".ui.timer.TimerOverlayService"
+            android:exported="false" />
+
         <service
             android:name=".service.WakeWordService"
             android:exported="false"

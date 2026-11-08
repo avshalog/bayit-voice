@@ -202,5 +202,6 @@ internal fun errorText(error: SessionError): String = when (error) {
     SessionError.NoSpeech -> stringResource(R.string.error_no_speech)
     SessionError.Microphone -> stringResource(R.string.error_microphone)
     SessionError.LocalNetworkDenied -> stringResource(R.string.error_local_network_denied)
+    SessionError.SatelliteNotConnected -> stringResource(R.string.error_satellite_not_connected)
     is SessionError.Server -> stringResource(R.string.error_server, error.message)
 }

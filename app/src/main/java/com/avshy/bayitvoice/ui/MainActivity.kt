@@ -49,6 +49,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.NetworkInfo
 
 /** Onboarding and settings. */
@@ -134,9 +135,14 @@ private fun SettingsScreen(
             Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
 
             val connected = state.isConnected
-            Button(onClick = onOpenAssistant, enabled = connected, modifier = Modifier.fillMaxWidth()) {
+            val canOpen = if (state.assistLink == AssistLink.Satellite) state.satelliteConnected else connected
+            Button(onClick = onOpenAssistant, enabled = canOpen, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.settings_open_assistant))
             }
+
+            SectionTitle(R.string.settings_section_link)
+            AssistLinkSettings(state, viewModel)
+            HorizontalDivider()
 
             SectionTitle(R.string.settings_section_server)
             UrlField(

@@ -26,6 +26,7 @@ import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.satellite.SatelliteDevice
+import com.avshy.bayitvoice.timer.TimerAlarms
 import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.wakeword.WakeWordDetector
 import com.avshy.bayitvoice.wakeword.WakeWordEngine
@@ -85,10 +86,9 @@ class WakeWordService : Service() {
                 if (listening != null) restart()
                 return START_NOT_STICKY
             }
-            // Debug builds: put the satellite key on the clipboard, to paste into HA, until settings show it.
-            ACTION_DEBUG_COPY_KEY -> if (BuildConfig.DEBUG) {
-                val clip = android.content.ClipData.newPlainText("ESPHome key", AppSettings.get(this).satelliteKey)
-                getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(clip)
+            // Debug builds: a timer as if HA had set it, to try the timer screens.
+            ACTION_DEBUG_TIMER -> if (BuildConfig.DEBUG && listening != null) {
+                TimerAlarms.get(this).simulate(scope, intent.getStringExtra("name").orEmpty(), intent.getIntExtra("seconds", 10))
                 return START_NOT_STICKY
             }
         }
@@ -165,6 +165,7 @@ class WakeWordService : Service() {
             satellite.wakeWords = SatelliteWakeWords(this)
             satellite.start(scope)
             satellite.sendConfiguration()
+            TimerAlarms.get(this).start(scope)
         } else {
             satellite.stop()
             if (settings.connectionMode == ConnectionMode.KeepConnected && settings.isConfigured) {
@@ -201,6 +202,12 @@ class WakeWordService : Service() {
 
     private fun onWakeWord(score: Float, snrDb: Float) {
         Log.i(TAG, "Wake word detected (score %.2f, %.1f dB above the noise floor)".format(score, snrDb))
+        // While a timer rings, the wake word only silences it.
+        val timers = TimerAlarms.get(this)
+        if (timers.isRinging) {
+            timers.stopRinging()
+            return
+        }
         // Stop wake-word capture right away, so the same word isn't detected again meanwhile.
         MicArbiter.requestSession()
         // The session opens at once; it arbitrates with other devices itself (SPEC section 6.2).
@@ -289,7 +296,7 @@ class WakeWordService : Service() {
         private const val ACTION_RELOAD = "reload"
         private const val ACTION_DEBUG_DETECT = "debug_detect"
         private const val ACTION_DEBUG_LINK = "debug_link"
-        private const val ACTION_DEBUG_COPY_KEY = "debug_copy_key"
+        private const val ACTION_DEBUG_TIMER = "debug_timer"
 
         private const val SESSION_CLAIM_TIMEOUT_MS = 20_000L
         private const val STATS_INTERVAL_MS = 60_000L

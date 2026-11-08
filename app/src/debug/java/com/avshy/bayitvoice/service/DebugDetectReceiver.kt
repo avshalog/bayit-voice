@@ -8,7 +8,7 @@ import android.content.Intent
  * Debug builds only: forwards a debug action from adb to the (unexported) listening service.
  * Default action acts as if the wake word was heard:
  * `adb shell am broadcast -n com.avshy.bayitvoice/.service.DebugDetectReceiver --ef score 0.9 --ef snr 20`
- * Others: `--es action debug_link --es link Satellite`, `--es action debug_copy_key`.
+ * Others: `--es action debug_link --es link Satellite`, `--es action debug_timer --es name Pasta --ei seconds 20`.
  */
 class DebugDetectReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {

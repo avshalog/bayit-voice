@@ -135,4 +135,31 @@
     <string name="about_models_license">מודלי מילת ההפעלה המובנים ומודלי המאפיינים של openWakeWord (melspectrogram, embedding) נוצרו על ידי David Scripka (openWakeWord) ומורשים תחת Creative Commons ייחוס-שימוש לא מסחרי-שיתוף זהה 4.0 (CC BY-NC-SA 4.0). אסור להשתמש בהם למטרות מסחריות. הקוד של openWakeWord מורשה תחת Apache 2.0.</string>
     <string name="about_libraries_title">ספריות</string>
     <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0. הכדור המונפש מבוסס על thinking-orbs מאת Jakub Antalik: רישיון MIT.</string>
+<!-- Connection mode (SPEC section 10) -->
+    <string name="settings_section_link">חיבור ל-Home Assistant</string>
+    <string name="link_satellite">לוויין</string>
+    <string name="link_direct">ישיר</string>
+    <string name="link_satellite_help">טיימרים, הכרזות ו\"כאן\". HA מתחבר אל המכשיר.</string>
+    <string name="link_direct_help">האפליקציה מתחברת ל-HA עם הכתובת והטוקן שלמטה.</string>
+    <string name="link_status_connected">מחובר ל-HA</string>
+    <string name="link_status_waiting">ממתין לצימוד ב-HA</string>
+    <string name="link_status_needs_listening">הפעל האזנה למילת ההפעלה כדי ש-HA יוכל להתחבר</string>
+    <string name="link_device_name">שם המכשיר ב-HA</string>
+    <string name="link_key">מפתח הצפנה</string>
+    <string name="link_copy_key">העתק</string>
+    <string name="link_pair_help">ב-HA: הגדרות › מכשירים ושירותים › \"התגלה\" › הגדר, והדבק את המפתח.</string>
+    <string name="error_satellite_not_connected">HA לא מחובר למכשיר הזה. הוסף אותו ב-HA (הגדרות › מכשירים ושירותים), או בדוק ששניהם באותה רשת.</string>
+
+    <!-- Timers -->
+    <string name="timer_default_name">טיימר</string>
+    <string name="timer_finished_text">טיימר של %1$s הסתיים</string>
+    <string name="timer_stop">עצור</string>
+    <string name="timer_cancel">בטל טיימר</string>
+    <string name="timer_close">סגור</string>
+    <string name="timer_stop_hint">או אמור את מילת ההפעלה</string>
+    <string name="timer_more">+%1$d</string>
+    <string name="notification_timer_title">הטיימר הסתיים</string>
+    <plurals name="duration_hours"><item quantity="one">שעה</item><item quantity="two">שעתיים</item><item quantity="other">%d שעות</item></plurals>
+    <plurals name="duration_minutes"><item quantity="one">דקה</item><item quantity="two">2 דקות</item><item quantity="other">%d דקות</item></plurals>
+    <plurals name="duration_seconds"><item quantity="one">שנייה</item><item quantity="two">2 שניות</item><item quantity="other">%d שניות</item></plurals>
 </resources>

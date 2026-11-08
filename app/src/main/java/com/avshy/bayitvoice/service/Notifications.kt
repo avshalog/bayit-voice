@@ -13,6 +13,7 @@ object Notifications {
     const val ID_LISTENING = 1
     const val ID_SESSION = 2
     const val ID_BOOT = 3
+    const val ID_TIMER = 4
 
     fun ensureChannels(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)

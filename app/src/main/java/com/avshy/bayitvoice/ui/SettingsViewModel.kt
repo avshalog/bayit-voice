@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.config.ServerUrl
 import com.avshy.bayitvoice.config.SessionStyle
@@ -14,6 +15,7 @@ import com.avshy.bayitvoice.ha.HaException
 import com.avshy.bayitvoice.ha.HaVersion
 import com.avshy.bayitvoice.ha.PipelineList
 import com.avshy.bayitvoice.ha.Pipeline
+import com.avshy.bayitvoice.satellite.SatelliteDevice
 import com.avshy.bayitvoice.service.WakeWordService
 import com.avshy.bayitvoice.session.SessionError
 import com.avshy.bayitvoice.session.toSessionError
@@ -51,6 +53,9 @@ data class SettingsUiState(
     val autoCloseSeconds: Int = AppSettings.DEFAULT_AUTO_CLOSE_SECONDS,
     val chimeEnabled: Boolean = true,
     val sessionStyle: SessionStyle = SessionStyle.Wave,
+    val assistLink: AssistLink = AssistLink.Direct,
+    /** In satellite mode: HA is connected to this device. */
+    val satelliteConnected: Boolean = false,
 ) {
     val isConnected: Boolean
         get() = homeStatus is ConnectionStatus.Connected || externalStatus is ConnectionStatus.Connected
@@ -66,6 +71,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     private val settings = AppSettings.get(app)
     private val network = NetworkInfo(app)
+    private val satellite = SatelliteDevice.get(app)
 
     private val _state = MutableStateFlow(
         SettingsUiState(
@@ -77,12 +83,28 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
             autoCloseSeconds = settings.autoCloseSeconds,
             chimeEnabled = settings.chimeEnabled,
             sessionStyle = settings.sessionStyle,
+            assistLink = settings.assistLink,
         )
     )
     val state: StateFlow<SettingsUiState> = _state.asStateFlow()
 
     init {
         if (settings.isConfigured) testConnection(newToken = "")
+        viewModelScope.launch {
+            satellite.ready.collect { ready -> _state.update { it.copy(satelliteConnected = ready) } }
+        }
+    }
+
+    /** Name HA shows for this device until renamed there. */
+    val satelliteName: String get() = satellite.friendlyName
+
+    /** The key HA asks for when adding this device. */
+    val satelliteKey: String get() = settings.satelliteKey
+
+    fun setAssistLink(link: AssistLink) {
+        settings.assistLink = link
+        _state.update { it.copy(assistLink = link) }
+        WakeWordService.reload(getApplication())
     }
 
     fun onHomeUrlChange(value: String) = _state.update { it.copy(homeUrl = value) }

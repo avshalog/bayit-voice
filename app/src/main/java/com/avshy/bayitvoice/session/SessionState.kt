@@ -18,6 +18,9 @@ sealed interface SessionError {
     data object Microphone : SessionError
     data object LocalNetworkDenied : SessionError
 
+    /** Satellite mode is on but HA is not connected to this device (not added in HA yet, or offline). */
+    data object SatelliteNotConnected : SessionError
+
     /** An error reported by HA; [message] is HA's own text (already in the pipeline's language). */
     data class Server(val message: String) : SessionError
 }

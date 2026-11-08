@@ -36,6 +36,7 @@ object SessionLauncher {
     private const val SESSION_ACTIVITY = "com.avshy.bayitvoice.ui.SessionActivity"
     private const val MAIN_ACTIVITY = "com.avshy.bayitvoice.ui.MainActivity"
     private const val START_LISTENING_ACTIVITY = "com.avshy.bayitvoice.ui.StartListeningActivity"
+    private const val TIMER_ACTIVITY = "com.avshy.bayitvoice.ui.timer.TimerActivity"
 
     /**
      * Opens the session UI after a wake word. Android only lets a background app start an
@@ -55,6 +56,16 @@ object SessionLauncher {
             return
         }
         notify(context, Notifications.ID_SESSION, intent, R.string.notification_session_title, R.string.notification_session_text, fullScreen = true)
+    }
+
+    /** Shows the timer screen (a timer is ringing), over the lock screen if needed. */
+    fun openTimer(context: Context) {
+        val intent = activityIntent(context, TIMER_ACTIVITY).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (Settings.canDrawOverlays(context)) {
+            context.startActivity(intent)
+            return
+        }
+        notify(context, Notifications.ID_TIMER, intent, R.string.notification_timer_title, R.string.timer_stop, fullScreen = true)
     }
 
     /** After boot: start listening directly if allowed, otherwise ask the user with a notification. */

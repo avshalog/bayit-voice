@@ -9,6 +9,7 @@ import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.ha.ConnectionManager
+import com.avshy.bayitvoice.satellite.SatelliteDevice
 import com.avshy.bayitvoice.session.AssistSession
 import com.avshy.bayitvoice.session.SessionEnd
 import com.avshy.bayitvoice.session.SessionState
@@ -29,7 +30,7 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     private val ownConnection = settings.connectionMode == ConnectionMode.OnDemand
     private val connections =
         if (ownConnection) ConnectionManager.create(app) else ConnectionManager.shared(app)
-    private val session = AssistSession(settings, connections)
+    private val session = AssistSession(settings, connections, SatelliteDevice.get(app))
 
     val state: StateFlow<SessionState> = session.state
 
