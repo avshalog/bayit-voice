@@ -27,6 +27,7 @@ import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.satellite.SatelliteDevice
 import com.avshy.bayitvoice.timer.TimerAlarms
+import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.wakeword.WakeWordDetector
 import com.avshy.bayitvoice.wakeword.WakeWordEngine
@@ -202,16 +203,17 @@ class WakeWordService : Service() {
 
     private fun onWakeWord(score: Float, snrDb: Float) {
         Log.i(TAG, "Wake word detected (score %.2f, %.1f dB above the noise floor)".format(score, snrDb))
-        // While a timer rings, the wake word only silences it.
+        val detection = WakeDetection(SystemClock.elapsedRealtime(), score, snrDb, detector?.noiseFloor ?: 0.0)
+        // While a timer rings, the wake word only silences it; other devices that heard it stand down.
         val timers = TimerAlarms.get(this)
         if (timers.isRinging) {
             timers.stopRinging()
+            scope.launch { SessionArbitration.claimOwned(this@WakeWordService, detection) }
             return
         }
         // Stop wake-word capture right away, so the same word isn't detected again meanwhile.
         MicArbiter.requestSession()
         // The session opens at once; it arbitrates with other devices itself (SPEC section 6.2).
-        val detection = WakeDetection(SystemClock.elapsedRealtime(), score, snrDb, detector?.noiseFloor ?: 0.0)
         SessionLauncher.openSession(this, detection)
         // If the session UI never starts (e.g. the notification is ignored), resume listening.
         scope.launch {
