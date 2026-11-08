@@ -169,8 +169,9 @@ The user can choose the app as the device's digital assistant (Settings → Apps
 ### 5.2 Auto-close
 
 - After a **successful** turn with `continue_conversation == false`: wait for TTS playback to finish, then close the UI after the configured delay.
-- After a **failure**: do not auto-close. Show the error text and keep the mic button available.
-- Any touch on the UI cancels the auto-close timer.
+- After a **failure**: show the error text and keep the mic button available; close after 20 s (or the configured delay, if longer), so an unattended device, such as a satellite, never stays open.
+- A touch postpones closing instead of cancelling it: once the turn is over, the UI closes 20 s (or the configured delay, if longer) after the last touch. A touch during the turn makes the close after it use that longer delay.
+- An auto-close delay of 0 in settings still means the UI never closes by itself.
 
 ### 5.3 Continue conversation
 

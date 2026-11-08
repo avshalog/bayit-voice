@@ -40,12 +40,20 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     private var conversation: Job? = null
     private var autoClose: Job? = null
 
+    /** The current turn is over and the UI is only showing its result. */
+    private var ended = false
+
+    /** Someone touched the UI during this turn. */
+    private var touched = false
+
     /**
      * Starts (or restarts) a conversation. [fromWakeWord] plays the listening chime first.
      * The wake-word service is paused while the conversation owns the microphone.
      */
     fun startConversation(fromWakeWord: Boolean = false, detection: WakeDetection? = null) {
         cancelAutoClose()
+        ended = false
+        touched = false
         _closeRequested.value = false
         val previous = conversation
         // Only a session opened by the wake word is arbitrated with other devices.
@@ -59,14 +67,21 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
                 MicArbiter.endSession()
             }
             when (end) {
-                SessionEnd.Completed -> scheduleAutoClose()
+                SessionEnd.Completed -> {
+                    ended = true
+                    scheduleAutoClose(if (touched) idleCloseSeconds() else settings.autoCloseSeconds)
+                }
                 SessionEnd.Silent -> _closeRequested.value = true
                 SessionEnd.Yielded -> {
                     // Show which device is answering, then step aside.
                     delay(ELSEWHERE_NOTICE_MS)
                     _closeRequested.value = true
                 }
-                SessionEnd.Failed -> Unit
+                SessionEnd.Failed -> {
+                    // Long enough to read the error, but never left on screen for good.
+                    ended = true
+                    scheduleAutoClose(idleCloseSeconds())
+                }
             }
         }
     }
@@ -75,14 +90,28 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     fun localNetworkPermissions(): Array<String> =
         if (settings.homeServer != null) NetworkInfo.localNetworkPermissions() else emptyArray()
 
-    /** Any touch on the UI cancels a pending auto-close. */
-    fun cancelAutoClose() {
+    /**
+     * A touch keeps the UI open for a while, not for good: the idle timer restarts, so a screen
+     * someone touched and walked away from still closes.
+     */
+    fun onUserTouch() {
+        touched = true
+        if (ended) scheduleAutoClose(idleCloseSeconds())
+    }
+
+    private fun cancelAutoClose() {
         autoClose?.cancel()
         autoClose = null
     }
 
-    private fun scheduleAutoClose() {
+    /** A touched or failed session waits at least [IDLE_CLOSE_SECONDS]; 0 in settings still means never. */
+    private fun idleCloseSeconds(): Int {
         val seconds = settings.autoCloseSeconds
+        return if (seconds <= 0) 0 else maxOf(seconds, IDLE_CLOSE_SECONDS)
+    }
+
+    private fun scheduleAutoClose(seconds: Int) {
+        cancelAutoClose()
         if (seconds <= 0) return
         autoClose = viewModelScope.launch {
             delay(seconds * 1000L)
@@ -96,5 +125,6 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val ELSEWHERE_NOTICE_MS = 1_500L
+        const val IDLE_CLOSE_SECONDS = 20
     }
 }

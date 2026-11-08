@@ -106,7 +106,7 @@ class SessionActivity : ComponentActivity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        if (ev.actionMasked == MotionEvent.ACTION_DOWN) viewModel.cancelAutoClose()
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) viewModel.onUserTouch()
         return super.dispatchTouchEvent(ev)
     }
 
