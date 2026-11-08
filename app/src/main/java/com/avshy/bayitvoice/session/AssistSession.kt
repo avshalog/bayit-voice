@@ -8,6 +8,7 @@ import com.avshy.bayitvoice.audio.MicRecorder
 import com.avshy.bayitvoice.audio.MicrophoneException
 import com.avshy.bayitvoice.audio.TtsPlayer
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ServerUrl
 import com.avshy.bayitvoice.satellite.SatelliteDevice
@@ -350,6 +351,8 @@ class AssistSession(
                 withTimeoutOrNull(RUN_TIMEOUT_MS) {
                     var timer: Job? = null
                     for (event in events) {
+                        // Debug builds: what HA heard and answered, to diagnose replies.
+                        if (BuildConfig.DEBUG) Log.d(TAG, "Satellite event ${event.type} ${event.data}")
                         when (event.type) {
                             VoiceEvent.RUN_START -> {
                                 streamer.start(SatelliteSink(device))
