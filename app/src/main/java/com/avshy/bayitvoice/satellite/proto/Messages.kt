@@ -7,6 +7,8 @@ package com.avshy.bayitvoice.satellite.proto
 object MessageType {
     const val HELLO_REQUEST = 1
     const val HELLO_RESPONSE = 2
+    const val CONNECT_REQUEST = 3
+    const val CONNECT_RESPONSE = 4
     const val DISCONNECT_REQUEST = 5
     const val DISCONNECT_RESPONSE = 6
     const val PING_REQUEST = 7

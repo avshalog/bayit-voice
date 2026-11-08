@@ -6,6 +6,7 @@ import com.avshy.bayitvoice.satellite.proto.ApiMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
@@ -34,8 +35,22 @@ class EspHomeServer(
 
     val isConnected: Boolean get() = current != null
 
+    /** Messages to HA, written in order by one coroutine: callers may be on any thread, the main one too. */
+    private val outbox = Channel<ApiMessage>(Channel.UNLIMITED)
+
     fun start(scope: CoroutineScope) {
         val psk = Base64.decode(key, Base64.NO_WRAP)
+        scope.launch(Dispatchers.IO) {
+            for (message in outbox) {
+                val connection = current ?: continue
+                try {
+                    connection.write(message)
+                } catch (e: IOException) {
+                    Log.w(TAG, "Send failed: ${e.message}")
+                    connection.close()
+                }
+            }
+        }
         acceptJob = scope.launch(Dispatchers.IO) {
             val server = ServerSocket().apply {
                 reuseAddress = true
@@ -57,21 +72,16 @@ class EspHomeServer(
 
     fun stop() {
         acceptJob?.cancel()
+        outbox.close()
         runCatching { serverSocket?.close() }
         current?.close()
         current = null
     }
 
+    /** Queues [message] for HA; false when HA is not connected. Never blocks. */
     fun send(message: ApiMessage): Boolean {
-        val connection = current ?: return false
-        return try {
-            connection.write(message)
-            true
-        } catch (e: IOException) {
-            Log.w(TAG, "Send failed: ${e.message}")
-            connection.close()
-            false
-        }
+        if (current == null) return false
+        return outbox.trySend(message).isSuccess
     }
 
     private suspend fun serve(socket: Socket, psk: ByteArray) {

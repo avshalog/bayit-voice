@@ -98,6 +98,8 @@ class SatelliteDevice private constructor(private val context: Context) {
                 Log.i(TAG, "Hello from '${hello.clientInfo}' (API ${hello.apiMajor}.${hello.apiMinor})")
                 send(Outgoing.helloResponse(name, API_MAJOR, API_MINOR, SERVER_INFO))
             }
+            // Legacy password login; an empty reply means "no password needed" (encryption authenticates).
+            MessageType.CONNECT_REQUEST -> send(Outgoing.empty(MessageType.CONNECT_RESPONSE))
             MessageType.DEVICE_INFO_REQUEST -> send(
                 Outgoing.deviceInfo(
                     name = name,
