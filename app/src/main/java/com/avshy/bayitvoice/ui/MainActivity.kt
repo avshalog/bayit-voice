@@ -194,7 +194,12 @@ private fun SettingsScreen(
                 Text(stringResource(R.string.notice_old_ha_version), color = MaterialTheme.colorScheme.tertiary)
             }
 
-            if (connected) {
+            if (state.assistLink == AssistLink.Satellite) {
+                // As a satellite HA runs the pipeline it has chosen for this device; the app's choice would not apply.
+                HorizontalDivider()
+                SectionTitle(R.string.settings_section_pipeline)
+                Text(stringResource(R.string.settings_pipeline_satellite), style = MaterialTheme.typography.bodyMedium)
+            } else if (connected) {
                 HorizontalDivider()
                 SectionTitle(R.string.settings_section_pipeline)
                 PipelineOption(

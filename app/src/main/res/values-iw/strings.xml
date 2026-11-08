@@ -137,6 +137,7 @@
     <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0. הכדור המונפש מבוסס על thinking-orbs מאת Jakub Antalik: רישיון MIT.</string>
 <!-- Connection mode (SPEC section 10) -->
     <string name="settings_section_link">חיבור ל-Home Assistant</string>
+    <string name="settings_pipeline_satellite">במצב לווין HA בוחר את העוזר של המכשיר. אפשר לשנות אותו בדף של המכשיר ב-HA, בהגדרה \"Assistant\".</string>
     <string name="link_satellite">לוויין</string>
     <string name="link_direct">ישיר</string>
     <string name="link_satellite_help">טיימרים, הכרזות ו\"כאן\". HA מתחבר אל המכשיר.</string>
