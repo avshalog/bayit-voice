@@ -137,7 +137,7 @@ The user picks one of three styles per device in settings. **Wave** and **Futuri
   - The states are connecting / listening / thinking / speaking / done / error.
   - While speaking and when done, the label is the assistant's name ("Home"). When done, its icon becomes a check mark that animates in once.
   - Listening and thinking add three bouncing dots after the label.
-- **Conversation:** the recognized user text in a speech bubble, then the assistant's reply text. Each text's direction (LTR/RTL) comes from the text itself.
+- **Conversation:** the recognized user text in a speech bubble, then the assistant's reply text. Hebrew niqqud (vowel points, often added to steer TTS) is removed from the shown reply; the spoken audio keeps it. Each text's direction (LTR/RTL) comes from the text itself.
 - **Bottom slot** (fixed height, so the sheet does not jump):
   - While the reply plays, a waveform scrolls in from the right edge. It follows the reply's loudness (`Visualizer` on the player's audio session), or a generic speech pattern when the device refuses.
   - After a turn: a "Speak again" mic button. After an error: "Try again". The mic button is hidden while a turn is running.

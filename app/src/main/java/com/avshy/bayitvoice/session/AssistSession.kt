@@ -249,7 +249,7 @@ class AssistSession(
                                 val response = output.optJSONObject("response")
                                 responseType = response?.optString("response_type")
                                 val speech = response?.optJSONObject("speech")?.optJSONObject("plain")?.optString("speech").orEmpty()
-                                _state.update { it.copy(replyText = speech) }
+                                _state.update { it.copy(replyText = speech.withoutNiqqud()) }
                             }
                             "tts-end" -> {
                                 ttsUrl = data.optJSONObject("tts_output")?.optString("url")?.takeIf { it.isNotEmpty() }
@@ -389,7 +389,7 @@ class AssistSession(
                             }
                             VoiceEvent.TTS_START -> {
                                 val text = event.data["text"].orEmpty()
-                                _state.update { it.copy(replyText = text) }
+                                _state.update { it.copy(replyText = text.withoutNiqqud()) }
                             }
                             VoiceEvent.TTS_END -> ttsUrl = event.data["url"]?.takeIf { it.isNotEmpty() }
                             VoiceEvent.ERROR -> {
