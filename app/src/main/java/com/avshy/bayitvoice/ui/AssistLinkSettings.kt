@@ -67,6 +67,7 @@ fun AssistLinkSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
         )
         Text(stringResource(status), style = MaterialTheme.typography.bodyMedium)
     }
+    Text(stringResource(R.string.settings_pipeline_satellite), style = MaterialTheme.typography.bodySmall)
     if (state.satelliteConnected) return
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -94,6 +95,13 @@ fun AssistLinkSettings(state: SettingsUiState, viewModel: SettingsViewModel) {
         }
     }
     Text(stringResource(R.string.link_pair_help), style = MaterialTheme.typography.bodySmall)
+    // For networks where HA cannot discover the device: add it by hand in HA's ESPHome integration.
+    viewModel.satelliteAddress()?.let { address ->
+        Text(
+            stringResource(R.string.link_manual_address, "⁦$address⁩"),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }
 
 /** Copies [secret] marked as sensitive, so the keyboard's clipboard preview hides it. */

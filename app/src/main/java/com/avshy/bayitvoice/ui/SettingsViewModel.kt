@@ -98,6 +98,15 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
     /** Name HA shows for this device until renamed there. */
     val satelliteName: String get() = satellite.friendlyName
 
+    /** `ip:port` to add this device by hand in HA, or null without a local IPv4 address. */
+    fun satelliteAddress(): String? = runCatching {
+        java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .firstOrNull { it is java.net.Inet4Address && it.isSiteLocalAddress }
+            ?.hostAddress?.let { "$it:${SatelliteDevice.PORT}" }
+    }.getOrNull()
+
     /** The key HA asks for when adding this device. */
     val satelliteKey: String get() = settings.satelliteKey
 

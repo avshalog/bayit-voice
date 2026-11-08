@@ -137,7 +137,7 @@
     <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX ו-Jetpack Compose, Kotlin coroutines: רישיון Apache 2.0. הכדור המונפש מבוסס על thinking-orbs מאת Jakub Antalik: רישיון MIT.</string>
 <!-- Connection mode (SPEC section 10) -->
     <string name="settings_section_link">חיבור ל-Home Assistant</string>
-    <string name="settings_pipeline_satellite">במצב לווין HA בוחר את העוזר של המכשיר. אפשר לשנות אותו בדף של המכשיר ב-HA, בהגדרה \"Assistant\".</string>
+    <string name="settings_pipeline_satellite">העוזר, החדר ומילת ההפעלה נקבעים גם ב-HA, בדף המכשיר.</string>
     <string name="link_satellite">לוויין</string>
     <string name="link_direct">ישיר</string>
     <string name="link_satellite_help">טיימרים, הכרזות ו\"כאן\". HA מתחבר אל המכשיר.</string>
@@ -147,6 +147,7 @@
     <string name="link_status_needs_listening">הפעל האזנה למילת ההפעלה כדי ש-HA יוכל להתחבר</string>
     <string name="link_device_name">שם המכשיר ב-HA</string>
     <string name="link_key">מפתח הצפנה</string>
+    <string name="link_manual_address">המכשיר לא התגלה? ב-HA הוסף את האינטגרציה ESPHome עם הכתובת %1$s.</string>
     <string name="link_copy_key">העתק</string>
     <string name="link_pair_help">ב-HA: הגדרות › מכשירים ושירותים › \"התגלה\" › הגדר, והדבק את המפתח.</string>
     <string name="error_satellite_not_connected">HA לא מחובר למכשיר הזה. הוסף אותו ב-HA (הגדרות › מכשירים ושירותים), או בדוק ששניהם באותה רשת.</string>

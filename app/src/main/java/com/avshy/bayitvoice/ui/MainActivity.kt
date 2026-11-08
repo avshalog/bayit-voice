@@ -140,66 +140,64 @@ private fun SettingsScreen(
                 Text(stringResource(R.string.settings_open_assistant))
             }
 
+            // Each link shows only what it uses; values of the other link stay saved (SPEC section 10).
+            val satellite = state.assistLink == AssistLink.Satellite
             SectionTitle(R.string.settings_section_link)
             AssistLinkSettings(state, viewModel)
-            HorizontalDivider()
 
-            SectionTitle(R.string.settings_section_server)
-            UrlField(
-                value = state.homeUrl,
-                onChange = viewModel::onHomeUrlChange,
-                label = R.string.settings_home_url_label,
-                hint = R.string.settings_home_url_hint,
-                plainHttp = state.isHomePlainHttp,
-                status = state.homeStatus,
-            )
-            UrlField(
-                value = state.externalUrl,
-                onChange = viewModel::onExternalUrlChange,
-                label = R.string.settings_external_url_label,
-                hint = R.string.settings_external_url_hint,
-                plainHttp = state.isExternalPlainHttp,
-                status = state.externalStatus,
-            )
-            Text(stringResource(R.string.settings_urls_help), style = MaterialTheme.typography.bodySmall)
+            if (!satellite) {
+                UrlField(
+                    value = state.homeUrl,
+                    onChange = viewModel::onHomeUrlChange,
+                    label = R.string.settings_home_url_label,
+                    hint = R.string.settings_home_url_hint,
+                    plainHttp = state.isHomePlainHttp,
+                    status = state.homeStatus,
+                )
+                UrlField(
+                    value = state.externalUrl,
+                    onChange = viewModel::onExternalUrlChange,
+                    label = R.string.settings_external_url_label,
+                    hint = R.string.settings_external_url_hint,
+                    plainHttp = state.isExternalPlainHttp,
+                    status = state.externalStatus,
+                )
+                Text(stringResource(R.string.settings_urls_help), style = MaterialTheme.typography.bodySmall)
 
-            HomeNetworks(state, viewModel)
+                HomeNetworks(state, viewModel)
 
-            OutlinedTextField(
-                value = token,
-                onValueChange = { token = it },
-                label = { Text(stringResource(R.string.settings_token_label)) },
-                placeholder = {
-                    if (state.hasSavedToken) Text(stringResource(R.string.settings_token_saved))
-                },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(stringResource(R.string.settings_token_help), style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text(stringResource(R.string.settings_token_label)) },
+                    placeholder = {
+                        if (state.hasSavedToken) Text(stringResource(R.string.settings_token_saved))
+                    },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.settings_token_help), style = MaterialTheme.typography.bodySmall)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = testConnection,
-                    enabled = !state.isTesting,
-                ) { Text(stringResource(R.string.settings_test_connection)) }
-                if (state.hasSavedToken) {
-                    OutlinedButton(onClick = viewModel::signOut) { Text(stringResource(R.string.settings_sign_out)) }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Button(
+                        onClick = testConnection,
+                        enabled = !state.isTesting,
+                    ) { Text(stringResource(R.string.settings_test_connection)) }
+                    if (state.hasSavedToken) {
+                        OutlinedButton(onClick = viewModel::signOut) { Text(stringResource(R.string.settings_sign_out)) }
+                    }
                 }
-            }
-            state.formError?.let { Text(errorText(it), color = MaterialTheme.colorScheme.error) }
-            val version = (state.homeStatus as? ConnectionStatus.Connected) ?: (state.externalStatus as? ConnectionStatus.Connected)
-            if (version != null && !version.supportsFollowUp) {
-                Text(stringResource(R.string.notice_old_ha_version), color = MaterialTheme.colorScheme.tertiary)
+                state.formError?.let { Text(errorText(it), color = MaterialTheme.colorScheme.error) }
+                val version = (state.homeStatus as? ConnectionStatus.Connected) ?: (state.externalStatus as? ConnectionStatus.Connected)
+                if (version != null && !version.supportsFollowUp) {
+                    Text(stringResource(R.string.notice_old_ha_version), color = MaterialTheme.colorScheme.tertiary)
+                }
+
             }
 
-            if (state.assistLink == AssistLink.Satellite) {
-                // As a satellite HA runs the pipeline it has chosen for this device; the app's choice would not apply.
-                HorizontalDivider()
-                SectionTitle(R.string.settings_section_pipeline)
-                Text(stringResource(R.string.settings_pipeline_satellite), style = MaterialTheme.typography.bodyMedium)
-            } else if (connected) {
+            if (!satellite && connected) {
                 HorizontalDivider()
                 SectionTitle(R.string.settings_section_pipeline)
                 PipelineOption(
@@ -241,6 +239,7 @@ private fun SettingsScreen(
                 viewModel = wakeViewModel,
                 hasHomeAddress = state.homeUrl.isNotBlank(),
                 onOpenGuide = onOpenGuide,
+                satellite = satellite,
             )
 
             HorizontalDivider()

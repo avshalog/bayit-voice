@@ -140,7 +140,7 @@
     <string name="about_libraries">LiteRT (TensorFlow Lite), OkHttp, AndroidX and Jetpack Compose, Kotlin coroutines: Apache License 2.0. The animated orb is based on thinking-orbs by Jakub Antalik: MIT License.</string>
 <!-- Connection mode (SPEC section 10) -->
     <string name="settings_section_link">Connection to Home Assistant</string>
-    <string name="settings_pipeline_satellite">In satellite mode HA chooses the assistant for this device. Change it on the device page in HA › Assistant.</string>
+    <string name="settings_pipeline_satellite">HA chooses the assistant, the area and the wake word too, on the device page in HA.</string>
     <string name="link_satellite">Satellite</string>
     <string name="link_direct">Direct</string>
     <string name="link_satellite_help">Timers, announcements and \"here\". HA connects to this device.</string>
@@ -150,6 +150,7 @@
     <string name="link_status_needs_listening">Turn on wake word listening so HA can connect</string>
     <string name="link_device_name">Device name in HA</string>
     <string name="link_key">Encryption key</string>
+    <string name="link_manual_address">Not discovered? In HA add the ESPHome integration with the address %1$s.</string>
     <string name="link_copy_key">Copy</string>
     <string name="link_pair_help">In HA: Settings › Devices and services › Discovered › Add, and paste the key.</string>
     <string name="error_satellite_not_connected">HA is not connected to this device. Add it in HA (Settings › Devices and services), or check that both are on the same network.</string>

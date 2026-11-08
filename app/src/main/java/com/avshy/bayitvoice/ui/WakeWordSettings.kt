@@ -47,6 +47,8 @@ fun WakeWordSettings(
     viewModel: WakeWordViewModel,
     hasHomeAddress: Boolean,
     onOpenGuide: () -> Unit,
+    /** Satellite mode: HA connects to the device, so the app's own connection settings are hidden. */
+    satellite: Boolean = false,
 ) {
     val context = LocalContext.current
     val enablePermissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -118,8 +120,9 @@ fun WakeWordSettings(
         Switch(checked = state.startOnBoot, onCheckedChange = viewModel::setStartOnBoot)
     }
 
-    Text(stringResource(R.string.connection_mode), style = MaterialTheme.typography.titleSmall)
-    ConnectionMode.entries.forEach { mode ->
+    // How the app holds its own HA connection: only the direct link has one.
+    if (!satellite) Text(stringResource(R.string.connection_mode), style = MaterialTheme.typography.titleSmall)
+    if (!satellite) ConnectionMode.entries.forEach { mode ->
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().clickable { viewModel.setConnectionMode(mode) },
