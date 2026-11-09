@@ -186,6 +186,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_IDLE_AUTO_START, false)
         set(value) = prefs.edit { putBoolean(KEY_IDLE_AUTO_START, value) }
 
+    /** Idle screen: the HA `weather` entity it shows; null = no weather. */
+    var idleWeatherEntity: String?
+        get() = prefs.getString(KEY_IDLE_WEATHER, null)?.takeIf { it.startsWith("weather.") }
+        set(value) = prefs.edit { putString(KEY_IDLE_WEATHER, value?.trim()?.lowercase()) }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -259,6 +264,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_IDLE_DAY_BRIGHTNESS = "idle_day_brightness"
         private const val KEY_IDLE_NIGHT_SCREEN_OFF = "idle_night_screen_off"
         private const val KEY_IDLE_AUTO_START = "idle_auto_start"
+        private const val KEY_IDLE_WEATHER = "idle_weather_entity"
         private const val LEGACY_KEY_URL = "server_url"
         private const val LEGACY_SECRETS_FILE = "secrets"
 

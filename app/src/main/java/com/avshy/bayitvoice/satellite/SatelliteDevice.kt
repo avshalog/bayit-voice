@@ -4,7 +4,9 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.satellite.proto.ActionResponse
 import com.avshy.bayitvoice.satellite.proto.AnnounceRequest
+import com.avshy.bayitvoice.satellite.proto.HomeAssistantState
 import com.avshy.bayitvoice.satellite.proto.ApiMessage
 import com.avshy.bayitvoice.satellite.proto.HelloRequest
 import com.avshy.bayitvoice.satellite.proto.MessageType
@@ -62,6 +64,9 @@ class SatelliteDevice private constructor(private val context: Context) {
     )
     val announcements: SharedFlow<AnnounceRequest> = _announcements.asSharedFlow()
 
+    /** HA states and actions for the idle screen (SPEC section 11). */
+    val ha = HaLink(::send)
+
     val name: String get() = "bayit-voice-" + settings.satelliteMac.takeLast(6)
 
     val friendlyName: String get() = settings.deviceName ?: Build.MODEL
@@ -76,7 +81,7 @@ class SatelliteDevice private constructor(private val context: Context) {
             mac = mac,
             onConnected = { },
             onMessage = ::handle,
-            onDisconnected = { _ready.value = false },
+            onDisconnected = { _ready.value = false; ha.onDisconnected() },
         ).also { it.start(scope) }
         advertiser = SatelliteAdvertiser(context, name, friendlyName, PORT, mac).also { it.register() }
     }
@@ -136,6 +141,11 @@ class SatelliteDevice private constructor(private val context: Context) {
                 val active = SetConfiguration.parse(message).activeWakeWords.firstOrNull()
                 if (active != null && active != wakeWords?.activeId()) wakeWords?.activate(active)
             }
+            MessageType.SUBSCRIBE_HOME_ASSISTANT_STATES_REQUEST -> ha.onStatesRequested()
+            MessageType.HOME_ASSISTANT_STATE_RESPONSE -> ha.onState(HomeAssistantState.parse(message))
+            MessageType.HOMEASSISTANT_ACTION_RESPONSE -> ha.onActionResponse(ActionResponse.parse(message))
+            // HA subscribes to the actions a device may request; nothing to answer.
+            MessageType.SUBSCRIBE_HOMEASSISTANT_SERVICES_REQUEST -> Unit
             else -> Log.d(TAG, "Ignoring message type ${message.type}")
         }
     }

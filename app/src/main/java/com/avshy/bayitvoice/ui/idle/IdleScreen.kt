@@ -26,6 +26,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.weather.IdleWeather
+import com.avshy.bayitvoice.weather.WeatherNow
+import kotlin.math.roundToInt
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -57,6 +67,18 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
     }
     LaunchedEffect(state.night) { onNightChange(state.night) }
 
+    val weatherSource = remember { IdleWeather(context) }
+    LaunchedEffect(Unit) { weatherSource.run() }
+    val weather by weatherSource.now.collectAsState(initial = null)
+    // Rebuild the scene only when the condition or the part of the day changes.
+    val dayPart = when (val e = weather?.sunElevation) {
+        null -> if (state.minuteOfDay < 6 * 60 || state.minuteOfDay >= 18 * 60) -1 else 1
+        else -> if (e < -4) -1 else if (e <= 6) 0 else 1
+    }
+    val spec = remember(weather?.condition, dayPart) {
+        SceneSpec.of(weather?.condition, sunElevation = when (dayPart) { -1 -> -10.0; 0 -> 0.0; else -> 30.0 }, fallbackNight = dayPart < 0)
+    }
+
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
         val h = maxHeight
         val w = maxWidth
@@ -79,10 +101,10 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
                 Box(
                     Modifier.fillMaxSize()
                         .padding(frame)
-                        .clip(RoundedCornerShape(corner))
-                        .background(IdleColors.placeholderSky),
+                        .clip(RoundedCornerShape(corner)),
                 ) {
-                    DayContent(state, w, unit, shift)
+                    WeatherScene(spec)
+                    DayContent(state, weather, w, unit, shift)
                 }
             }
         }
@@ -90,15 +112,96 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
 }
 
 @Composable
-private fun DayContent(state: IdleClockState, w: Dp, h: Dp, shift: Offset) {
-    val shadow = Shadow(color = IdleColors.textShadow, blurRadius = 22f)
-    Column(
+private fun DayContent(state: IdleClockState, weather: WeatherNow?, w: Dp, h: Dp, shift: Offset) {
+    Box(
         Modifier
             .fillMaxSize()
             .padding(horizontal = w * 0.034f, vertical = h * 0.04f)
             .offset(shift.x.toDp(h), shift.y.toDp(h)),
-        horizontalAlignment = Alignment.Start,
     ) {
+        ClockAndDates(state, h, Modifier.align(Alignment.TopStart))
+        if (weather != null) {
+            WeatherNowText(weather, h, Modifier.align(Alignment.TopEnd))
+            WeatherDetails(weather, h, Modifier.align(Alignment.BottomEnd))
+        }
+    }
+}
+
+@Composable
+private fun WeatherNowText(weather: WeatherNow, h: Dp, modifier: Modifier) {
+    val shadow = Shadow(color = IdleColors.textShadow, blurRadius = 22f)
+    Column(modifier, horizontalAlignment = Alignment.End) {
+        weather.temperature?.let {
+            Text(
+                text = "${it.roundToInt()}°",
+                style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.24f), fontWeight = FontWeight.Light, textDirection = TextDirection.Ltr, shadow = shadow),
+            )
+        }
+        Text(
+            text = conditionText(weather.condition),
+            style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.08f), fontWeight = FontWeight.Medium, shadow = shadow),
+        )
+        if (weather.high != null && weather.low != null) {
+            Text(
+                text = stringResource(R.string.idle_high_low, weather.high.roundToInt(), weather.low.roundToInt()),
+                style = TextStyle(color = IdleColors.textSoft, fontSize = h.toSp(0.07f), shadow = shadow),
+            )
+        }
+    }
+}
+
+/** Humidity and wind in a glass chip at the bottom. */
+@Composable
+private fun WeatherDetails(weather: WeatherNow, h: Dp, modifier: Modifier) {
+    val parts = buildList {
+        weather.humidity?.let { add(stringResource(R.string.idle_humidity) to "${it.roundToInt()}%") }
+        weather.windSpeed?.let {
+            val unit = if (weather.windUnit == "km/h") stringResource(R.string.idle_unit_kmh) else weather.windUnit
+            add(stringResource(R.string.idle_wind) to "${it.roundToInt()} $unit".trim())
+        }
+    }
+    if (parts.isEmpty()) return
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(IdleColors.glass)
+            .border(1.dp, IdleColors.glassEdge, RoundedCornerShape(50))
+            .padding(horizontal = h * 0.05f, vertical = h * 0.015f),
+        horizontalArrangement = Arrangement.spacedBy(h * 0.06f),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for ((label, value) in parts) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(h * 0.012f)) {
+                Text(label, style = TextStyle(color = IdleColors.textSoft, fontSize = h.toSp(0.05f)))
+                Text(value, style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.065f), fontWeight = FontWeight.Medium))
+            }
+        }
+    }
+}
+
+@Composable
+private fun conditionText(condition: String?): String = stringResource(
+    when (condition) {
+        "sunny" -> R.string.weather_sunny
+        "clear-night" -> R.string.weather_clear_night
+        "partlycloudy" -> R.string.weather_partlycloudy
+        "cloudy" -> R.string.weather_cloudy
+        "fog" -> R.string.weather_fog
+        "rainy" -> R.string.weather_rainy
+        "pouring" -> R.string.weather_pouring
+        "lightning", "lightning-rainy" -> R.string.weather_lightning
+        "snowy" -> R.string.weather_snowy
+        "snowy-rainy" -> R.string.weather_snowy_rainy
+        "hail" -> R.string.weather_hail
+        "windy", "windy-variant" -> R.string.weather_windy
+        else -> R.string.weather_exceptional
+    },
+)
+
+@Composable
+private fun ClockAndDates(state: IdleClockState, h: Dp, modifier: Modifier) {
+    val shadow = Shadow(color = IdleColors.textShadow, blurRadius = 22f)
+    Column(modifier, horizontalAlignment = Alignment.Start) {
         Text(
             text = state.time,
             modifier = Modifier.cropToDigits(h * 0.50f),
@@ -182,7 +285,6 @@ object IdleColors {
     val textSoft = Color(0xE6FFFFFF)
     val textShadow = Color(0x73000000)
     val night = Color(0xFF7A2E1C)
-
-    /** Stand-in until the weather scene (stage 2): a calm evening sky. */
-    val placeholderSky = Brush.verticalGradient(listOf(Color(0xFF16233F), Color(0xFF2E4672), Color(0xFF6F7FA0)))
+    val glass = Color(0x4D080C14)
+    val glassEdge = Color(0x2EFFFFFF)
 }

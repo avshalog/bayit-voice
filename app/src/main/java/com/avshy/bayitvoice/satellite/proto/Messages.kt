@@ -17,6 +17,12 @@ object MessageType {
     const val DEVICE_INFO_RESPONSE = 10
     const val LIST_ENTITIES_REQUEST = 11
     const val LIST_ENTITIES_DONE_RESPONSE = 19
+    const val SUBSCRIBE_HOMEASSISTANT_SERVICES_REQUEST = 34
+    const val HOMEASSISTANT_ACTION_REQUEST = 35
+    const val SUBSCRIBE_HOME_ASSISTANT_STATES_REQUEST = 38
+    const val SUBSCRIBE_HOME_ASSISTANT_STATE_RESPONSE = 39
+    const val HOME_ASSISTANT_STATE_RESPONSE = 40
+    const val HOMEASSISTANT_ACTION_RESPONSE = 130
     const val SUBSCRIBE_VOICE_ASSISTANT_REQUEST = 89
     const val VOICE_ASSISTANT_REQUEST = 90
     const val VOICE_ASSISTANT_RESPONSE = 91
@@ -161,6 +167,29 @@ data class SetConfiguration(val activeWakeWords: List<String>) {
     }
 }
 
+/** `HomeAssistantStateResponse`: an entity's state, or one attribute of it, sent by HA. */
+data class HomeAssistantState(val entityId: String, val state: String, val attribute: String) {
+    companion object {
+        fun parse(m: ApiMessage) = HomeAssistantState(
+            entityId = m.fields.firstOrNull { it.field == 1 }?.string.orEmpty(),
+            state = m.fields.firstOrNull { it.field == 2 }?.string.orEmpty(),
+            attribute = m.fields.firstOrNull { it.field == 3 }?.string.orEmpty(),
+        )
+    }
+}
+
+/** `HomeassistantActionResponse`: the result of an action this device asked HA to run. */
+data class ActionResponse(val callId: Int, val success: Boolean, val error: String, val responseJson: String) {
+    companion object {
+        fun parse(m: ApiMessage) = ActionResponse(
+            callId = m.fields.firstOrNull { it.field == 1 }?.int ?: 0,
+            success = m.fields.firstOrNull { it.field == 2 }?.bool ?: false,
+            error = m.fields.firstOrNull { it.field == 3 }?.string.orEmpty(),
+            responseJson = m.fields.firstOrNull { it.field == 4 }?.bytes?.toString(Charsets.UTF_8).orEmpty(),
+        )
+    }
+}
+
 // --- Messages this device sends ---
 
 object Outgoing {
@@ -212,6 +241,26 @@ object Outgoing {
     fun announceFinished(success: Boolean) = ApiMessage(
         MessageType.VOICE_ASSISTANT_ANNOUNCE_FINISHED,
         ProtoWriter().bool(1, success).toByteArray(),
+    )
+
+    /** Asks HA to send an entity's state ([attribute] empty) or one of its attributes, now and on every change. */
+    fun subscribeState(entityId: String, attribute: String = "") = ApiMessage(
+        MessageType.SUBSCRIBE_HOME_ASSISTANT_STATE_RESPONSE,
+        ProtoWriter().string(1, entityId).string(2, attribute.ifEmpty { null }).toByteArray(),
+    )
+
+    /**
+     * Asks HA to run an action (`domain.service`) with string [data]. A non-zero [callId] asks for
+     * the result, and [wantsResponse] for the action's response as JSON.
+     */
+    fun action(service: String, data: Map<String, String>, callId: Int, wantsResponse: Boolean) = ApiMessage(
+        MessageType.HOMEASSISTANT_ACTION_REQUEST,
+        ProtoWriter().apply {
+            string(1, service)
+            for ((key, value) in data) message(2, ProtoWriter().string(1, key).string(2, value))
+            uint32(6, callId)
+            bool(7, wantsResponse)
+        }.toByteArray(),
     )
 
     /** Wake words as (id, phrase); [active] are ids. */

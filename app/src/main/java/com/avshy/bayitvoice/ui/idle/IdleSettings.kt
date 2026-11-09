@@ -66,6 +66,22 @@ fun IdleSettings() {
         }
         Text(stringResource(R.string.idle_auto_start_help), style = MaterialTheme.typography.bodySmall)
 
+        var weatherEntity by remember { mutableStateOf(settings.idleWeatherEntity.orEmpty()) }
+        OutlinedTextField(
+            value = weatherEntity,
+            onValueChange = { value ->
+                weatherEntity = value.trim()
+                settings.idleWeatherEntity = weatherEntity.takeIf { it.startsWith("weather.") && it.length > 8 }
+            },
+            label = { Text(stringResource(R.string.idle_weather_entity)) },
+            placeholder = { Text(stringResource(R.string.idle_weather_hint)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(stringResource(R.string.idle_weather_help), style = MaterialTheme.typography.bodySmall)
+
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.idle_hebrew_date), modifier = Modifier.weight(1f))
             Switch(checked = hebrew, onCheckedChange = { hebrew = it; settings.idleHebrewDate = it })
