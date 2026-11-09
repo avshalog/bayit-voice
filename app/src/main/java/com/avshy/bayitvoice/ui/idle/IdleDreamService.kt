@@ -1,6 +1,11 @@
 package com.avshy.bayitvoice.ui.idle
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.PackageManager
 import android.service.dreams.DreamService
+import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.AssistLink
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.Lifecycle
@@ -64,5 +69,24 @@ class IdleDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner
     override fun onDestroy() {
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         super.onDestroy()
+    }
+
+    companion object {
+        /**
+         * The idle screen belongs to satellite mode only: in direct mode the screen saver is
+         * switched off, so the system does not even list it.
+         */
+        fun syncAvailability(context: Context) {
+            val wanted = if (AppSettings.get(context).assistLink == AssistLink.Satellite) {
+                PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            }
+            val component = ComponentName(context, IdleDreamService::class.java)
+            val pm = context.packageManager
+            if (pm.getComponentEnabledSetting(component) != wanted) {
+                pm.setComponentEnabledSetting(component, wanted, PackageManager.DONT_KILL_APP)
+            }
+        }
     }
 }

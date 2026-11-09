@@ -51,6 +51,7 @@ import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.NetworkInfo
+import com.avshy.bayitvoice.ui.idle.IdleDreamService
 import com.avshy.bayitvoice.ui.idle.IdleSettings
 
 /** Onboarding and settings. */
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        IdleDreamService.syncAvailability(this)
         setContent {
             BayitTheme {
                 var screen by rememberSaveable { mutableStateOf(Screen.Settings) }
@@ -246,9 +248,12 @@ private fun SettingsScreen(
                 satellite = satellite,
             )
 
-            HorizontalDivider()
-            SectionTitle(R.string.settings_section_idle)
-            IdleSettings()
+            // The idle screen is for a satellite, a device fixed in the home; direct mode has none.
+            if (satellite) {
+                HorizontalDivider()
+                SectionTitle(R.string.settings_section_idle)
+                IdleSettings()
+            }
 
             HorizontalDivider()
             TextButton(onClick = onOpenAbout) { Text(stringResource(R.string.about_title)) }

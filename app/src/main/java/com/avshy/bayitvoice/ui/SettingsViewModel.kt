@@ -114,6 +114,7 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         settings.assistLink = link
         _state.update { it.copy(assistLink = link) }
         WakeWordService.reload(getApplication())
+        com.avshy.bayitvoice.ui.idle.IdleDreamService.syncAvailability(getApplication())
     }
 
     fun onHomeUrlChange(value: String) = _state.update { it.copy(homeUrl = value) }

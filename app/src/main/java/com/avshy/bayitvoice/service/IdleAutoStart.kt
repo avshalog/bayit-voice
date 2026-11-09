@@ -8,6 +8,7 @@ import android.os.BatteryManager
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.AssistLink
 
 /**
  * Opens the idle screen by itself while the device charges (SPEC section 11), for systems such
@@ -26,7 +27,7 @@ class IdleAutoStart(private val context: Context) {
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (!settings.idleAutoStart) return
+            if (!settings.idleAutoStart || settings.assistLink != AssistLink.Satellite) return
             when (intent.action) {
                 Intent.ACTION_POWER_CONNECTED -> SessionLauncher.openIdle(context)
                 Intent.ACTION_SCREEN_OFF -> if (isCharging() && !IdleVisibility.wasShowingRecently()) {
