@@ -63,6 +63,9 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
         val frame = minOf(w, h) * 0.02f
         val corner = minOf(w, h) * 0.06f
         val shift = burnInShift(state.minuteOfDay)
+        // Text is sized from this unit: the height in landscape, a share of the width when the
+        // device stands upright, so the clock never outgrows a narrow screen.
+        val unit = minOf(h, w * 0.45f)
 
         AnimatedContent(
             targetState = state.night,
@@ -71,7 +74,7 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
         ) { night ->
             if (night) {
                 // Screen off: nothing is drawn and the host turns the backlight off.
-                if (!state.nightScreenOff) NightClock(state.time, h, shift)
+                if (!state.nightScreenOff) NightClock(state.time, unit, shift)
             } else {
                 Box(
                     Modifier.fillMaxSize()
@@ -79,7 +82,7 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
                         .clip(RoundedCornerShape(corner))
                         .background(IdleColors.placeholderSky),
                 ) {
-                    DayContent(state, w, h, shift)
+                    DayContent(state, w, unit, shift)
                 }
             }
         }
@@ -99,6 +102,8 @@ private fun DayContent(state: IdleClockState, w: Dp, h: Dp, shift: Offset) {
         Text(
             text = state.time,
             modifier = Modifier.cropToDigits(h * 0.50f),
+            maxLines = 1,
+            softWrap = false,
             style = TextStyle(
                 color = IdleColors.text,
                 fontSize = h.toSp(0.50f),
@@ -130,6 +135,8 @@ private fun NightClock(time: String, h: Dp, shift: Offset) {
     Box(Modifier.fillMaxSize().offset(shift.x.toDp(h), shift.y.toDp(h)), contentAlignment = Alignment.Center) {
         Text(
             text = time,
+            maxLines = 1,
+            softWrap = false,
             style = TextStyle(
                 color = IdleColors.night,
                 fontSize = h.toSp(0.42f),
