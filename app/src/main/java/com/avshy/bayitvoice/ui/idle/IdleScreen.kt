@@ -104,7 +104,8 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
                         .clip(RoundedCornerShape(corner)),
                 ) {
                     WeatherScene(spec)
-                    DayContent(state, weather, w, unit, shift)
+                    if (h > w) PortraitContent(state, weather, w, shift)
+                    else DayContent(state, weather, w, unit, shift)
                 }
             }
         }
@@ -119,32 +120,57 @@ private fun DayContent(state: IdleClockState, weather: WeatherNow?, w: Dp, h: Dp
             .padding(horizontal = w * 0.034f, vertical = h * 0.04f)
             .offset(shift.x.toDp(h), shift.y.toDp(h)),
     ) {
-        ClockAndDates(state, h, Modifier.align(Alignment.TopStart))
+        ClockAndDates(state, ClockSizes(h * 0.50f, h * 0.08f, h * 0.07f, h * 0.03f), Alignment.Start, Modifier.align(Alignment.TopStart))
         if (weather != null) {
-            WeatherNowText(weather, h, Modifier.align(Alignment.TopEnd))
+            WeatherNowText(weather, WeatherSizes(h * 0.24f, h * 0.08f, h * 0.07f), Alignment.End, Modifier.align(Alignment.TopEnd))
             WeatherDetails(weather, h, Modifier.align(Alignment.BottomEnd))
         }
     }
 }
 
+/**
+ * Portrait: the clock across the top, the middle kept free for the timer card (stage 3), and the
+ * weather large at the bottom. Sizes come from the width, the short side here.
+ */
 @Composable
-private fun WeatherNowText(weather: WeatherNow, h: Dp, modifier: Modifier) {
+private fun PortraitContent(state: IdleClockState, weather: WeatherNow?, w: Dp, shift: Offset) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(start = w * 0.05f, end = w * 0.05f, top = w * 0.05f, bottom = w * 0.06f)
+            .offset(shift.x.toDp(w), shift.y.toDp(w)),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        ClockAndDates(state, ClockSizes(w * 0.37f, w * 0.066f, w * 0.058f, w * 0.03f), Alignment.CenterHorizontally, Modifier)
+        Box(Modifier.weight(1f))
+        if (weather != null) {
+            WeatherNowText(weather, WeatherSizes(w * 0.34f, w * 0.085f, w * 0.07f), Alignment.CenterHorizontally, Modifier.padding(bottom = w * 0.04f))
+            WeatherDetails(weather, w * 0.92f, Modifier)
+        }
+    }
+}
+
+private class ClockSizes(val time: Dp, val date: Dp, val hebrewDate: Dp, val gap: Dp)
+private class WeatherSizes(val temperature: Dp, val condition: Dp, val highLow: Dp)
+
+@Composable
+private fun WeatherNowText(weather: WeatherNow, sizes: WeatherSizes, align: Alignment.Horizontal, modifier: Modifier) {
     val shadow = Shadow(color = IdleColors.textShadow, blurRadius = 22f)
-    Column(modifier, horizontalAlignment = Alignment.End) {
+    Column(modifier, horizontalAlignment = align) {
         weather.temperature?.let {
             Text(
                 text = "${it.roundToInt()}°",
-                style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.24f), fontWeight = FontWeight.Light, textDirection = TextDirection.Ltr, shadow = shadow),
+                style = TextStyle(color = IdleColors.text, fontSize = sizes.temperature.sp(), fontWeight = FontWeight.Light, textDirection = TextDirection.Ltr, shadow = shadow),
             )
         }
         Text(
             text = conditionText(weather.condition),
-            style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.08f), fontWeight = FontWeight.Medium, shadow = shadow),
+            style = TextStyle(color = IdleColors.text, fontSize = sizes.condition.sp(), fontWeight = FontWeight.Medium, shadow = shadow),
         )
         if (weather.high != null && weather.low != null) {
             Text(
                 text = stringResource(R.string.idle_high_low, weather.high.roundToInt(), weather.low.roundToInt()),
-                style = TextStyle(color = IdleColors.textSoft, fontSize = h.toSp(0.07f), shadow = shadow),
+                style = TextStyle(color = IdleColors.textSoft, fontSize = sizes.highLow.sp(), shadow = shadow),
             )
         }
     }
@@ -199,18 +225,18 @@ private fun conditionText(condition: String?): String = stringResource(
 )
 
 @Composable
-private fun ClockAndDates(state: IdleClockState, h: Dp, modifier: Modifier) {
+private fun ClockAndDates(state: IdleClockState, sizes: ClockSizes, align: Alignment.Horizontal, modifier: Modifier) {
     val shadow = Shadow(color = IdleColors.textShadow, blurRadius = 22f)
-    Column(modifier, horizontalAlignment = Alignment.Start) {
+    Column(modifier, horizontalAlignment = align) {
         Text(
             text = state.time,
-            modifier = Modifier.cropToDigits(h * 0.50f),
+            modifier = Modifier.cropToDigits(sizes.time),
             maxLines = 1,
             softWrap = false,
             style = TextStyle(
                 color = IdleColors.text,
-                fontSize = h.toSp(0.50f),
-                lineHeight = h.toSp(0.50f),
+                fontSize = sizes.time.sp(),
+                lineHeight = sizes.time.sp(),
                 fontWeight = FontWeight.Light,
                 textDirection = TextDirection.Ltr,
                 shadow = shadow,
@@ -221,13 +247,13 @@ private fun ClockAndDates(state: IdleClockState, h: Dp, modifier: Modifier) {
         )
         Text(
             text = state.gregorianDate,
-            modifier = Modifier.padding(top = h * 0.03f),
-            style = TextStyle(color = IdleColors.text, fontSize = h.toSp(0.08f), fontWeight = FontWeight.Medium, shadow = shadow),
+            modifier = Modifier.padding(top = sizes.gap),
+            style = TextStyle(color = IdleColors.text, fontSize = sizes.date.sp(), fontWeight = FontWeight.Medium, shadow = shadow),
         )
         state.hebrewDate?.let {
             Text(
                 text = it,
-                style = TextStyle(color = IdleColors.textSoft, fontSize = h.toSp(0.07f), shadow = shadow),
+                style = TextStyle(color = IdleColors.textSoft, fontSize = sizes.hebrewDate.sp(), shadow = shadow),
             )
         }
     }
@@ -278,6 +304,9 @@ private fun Modifier.cropToDigits(fontSize: Dp): Modifier = layout { measurable,
 
 @Composable
 private fun Dp.toSp(fraction: Float): TextUnit = with(LocalDensity.current) { (this@toSp * fraction).toSp() }
+
+@Composable
+private fun Dp.sp(): TextUnit = with(LocalDensity.current) { this@sp.toSp() }
 
 /** Fixed colours: the idle screen looks the same in either system theme. */
 object IdleColors {

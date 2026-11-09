@@ -40,15 +40,41 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; text-shadow: none; }
 .details { display: flex; gap: 3cqw; padding: 1.6cqh 2.4cqw; font-size: 6.5cqh; font-weight: 500; }
 .details small { opacity: 0.75; font-size: 5cqh; font-weight: 400; margin-inline-end: 0.6cqw; }
-.timer { display: flex; align-items: center; gap: 1.2cqw; padding: 1.6cqh 2.6cqw; font-size: 8cqh; }
-.timer b { font-weight: 600; font-size: 11cqh; line-height: 1; font-variant-numeric: tabular-nums; direction: ltr; }
+/* The timer card is the same in both orientations: sized by the short side of the screen (--u). */
+.device { --u: 1cqh; }
+.timer { display: flex; align-items: center; gap: calc(var(--u) * 2.7);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 5.8); font-size: calc(var(--u) * 8); }
+.timer b { font-weight: 600; font-size: calc(var(--u) * 11); line-height: 1; font-variant-numeric: tabular-nums; direction: ltr; }
 .note { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 900px; }
+
+/* Portrait (phone standing, 9:20): the clock across the top, the timer in the middle, the weather large at the bottom.
+   Sizes follow the screen width (cqw) here. */
+.stage.portrait { aspect-ratio: 9 / 20; width: min(100%, 440px); margin: 0 auto; }
+.portrait .overlay { padding: 5cqw 5cqw 6cqw; display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; text-align: center; }
+.portrait .top, .portrait .bottom { display: contents; }
+.portrait .clock { grid-row: 1; align-items: center; }
+.portrait .time { font-size: 37cqw; font-weight: 300; }
+.portrait .date { font-size: 6.6cqw; margin-top: 3cqw; }
+.portrait .hdate { font-size: 5.8cqw; }
+.portrait .device { --u: 1cqw; }
+.portrait .timer { grid-row: 2; align-self: center; }
+.portrait .now { grid-row: 3; text-align: center; margin-bottom: 4cqw; }
+.portrait .temp { font-size: 34cqw; }
+.portrait .cond { font-size: 8.5cqw; margin-top: 2cqw; }
+.portrait .hilo { font-size: 7cqw; margin-top: 1cqw; }
+.portrait .details { grid-row: 4; gap: 7cqw; padding: 3cqw 6cqw; font-size: 6cqw; }
+.portrait .details small { font-size: 4.6cqw; margin-inline-end: 1.5cqw; }
+.orient { display: flex; gap: 8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="picker orient" role="group" aria-label="כיוון המסך">
+    <button type="button" data-o="land" aria-pressed="true">לרוחב</button>
+    <button type="button" data-o="port" aria-pressed="false">לאורך</button>
+  </div>
   <div class="picker" role="group" aria-label="מצב מזג אוויר" id="picker"></div>
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="device">
       <div class="screen">
         <canvas id="sky"></canvas>
@@ -111,7 +137,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   const canvas = document.getElementById("sky");
   const ctx = canvas.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let W = 0, H = 0, DPR = 1, S = SCENES.sunny, t0 = performance.now();
+  let W = 0, H = 0, U = 0, DPR = 1, S = SCENES.sunny, t0 = performance.now();
   let clouds = [], stars = [], drops = [], ridges = [], birds = [], flash = 0, nextFlash = 2, boltSeed = 1;
   let seed = 11;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -121,7 +147,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 
   function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    const r = canvas.getBoundingClientRect(); W = r.width; H = r.height;
+    const r = canvas.getBoundingClientRect(); W = r.width; H = r.height; U = Math.min(H, W * 0.45);
     canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     build();
@@ -159,7 +185,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
         // Undergrowth / distant treetops: rounded bumps of varying height with occasional clearings.
         const scale = mode === "line" ? 0.016 : mode * 0.09;
         const cover = canopy(x / W * 9) > 0.32 ? 1 : 0.25;
-        y -= H * scale * cover * Math.sqrt(Math.abs(Math.sin(x / (H * scale * 1.6 + 2) + canopy((x / W * 30) % 60) * 3)));
+        y -= U * scale * cover * Math.sqrt(Math.abs(Math.sin(x / (U * scale * 1.6 + 2) + canopy((x / W * 30) % 60) * 3)));
       }
       pts.push([x, y]);
     }
@@ -167,9 +193,9 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
     const trees = [];
     if (typeof mode === "number") {
       // Mostly oaks / carobs and low bushes, some stone pines, a rare cypress. Clumps and clearings.
-      let x = -H * mode * 0.4;
-      while (x < W + H * mode) {
-        const r = rnd(), h = H * mode * (0.55 + rnd() * 0.7), y = yAt(x) + h * 0.04;
+      let x = -U * mode * 0.4;
+      while (x < W + U * mode) {
+        const r = rnd(), h = U * mode * (0.55 + rnd() * 0.7), y = yAt(x) + h * 0.04;
         const kind = r < 0.5 ? "oak" : r < 0.78 ? "bush" : r < 0.92 ? "pine" : "cypress";
         const t = { kind, x, y, h, hue: rnd(), tone: (rnd() - 0.5) * 0.18, lean: (rnd() - 0.5) * h * 0.12 };
         if (kind === "oak") t.crown = crown(x + t.lean, y - h * 0.6, h * (0.45 + rnd() * 0.18), h * (0.36 + rnd() * 0.1), "round");
@@ -287,7 +313,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
     }
 
     if (S.sun) {
-      const [ux, uy, k] = S.sun, sx = W * ux, sy = H * uy, R = H * 0.07, sc = S.sunColor || [255, 238, 200];
+      const [ux, uy, k] = S.sun, sx = W * ux, sy = H * uy, R = U * 0.07, sc = S.sunColor || [255, 238, 200];
       let g = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * 0.9);
       g.addColorStop(0, rgb(sc, 0.55 * k)); g.addColorStop(0.2, rgb(sc, 0.2 * k)); g.addColorStop(1, rgb(sc, 0));
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -306,7 +332,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, R * 1.4, 0, 6.283); ctx.fill();
     }
     if (S.moon) {
-      const mx = W * S.moon[0], my = H * S.moon[1], R = H * 0.05;
+      const mx = W * S.moon[0], my = H * S.moon[1], R = U * 0.05;
       let g = ctx.createRadialGradient(mx, my, 0, mx, my, R * 8);
       g.addColorStop(0, "rgba(196,212,255,0.3)"); g.addColorStop(1, "rgba(196,212,255,0)");
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -398,6 +424,13 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   for (const [k, s] of Object.entries(SCENES)) {
     const b = document.createElement("button"); b.type = "button"; b.dataset.k = k; b.textContent = s.label;
     b.addEventListener("click", () => setScene(k)); picker.appendChild(b);
+  }
+  const stage = document.getElementById("stage");
+  for (const b of document.querySelectorAll(".orient button")) {
+    b.addEventListener("click", () => {
+      stage.classList.toggle("portrait", b.dataset.o === "port");
+      for (const o of document.querySelectorAll(".orient button")) o.setAttribute("aria-pressed", String(o === b));
+    });
   }
   new ResizeObserver(resize).observe(canvas);
   resize(); setScene("sunny");
