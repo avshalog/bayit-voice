@@ -325,6 +325,8 @@ class AssistSession(
         var notSent = false
         var answeredElsewhere: String? = null
         var spokeBeforeVerdict = false
+        // True from our start request until HA reports the run's end (or an error).
+        var runOpen = false
 
         val finished = coroutineScope {
             val streamer = AudioStreamer(this, measure = arbitration != null)
@@ -347,6 +349,7 @@ class AssistSession(
                     notSent = true
                     return@coroutineScope true
                 }
+                runOpen = true
                 Log.i(TAG, "Satellite run requested")
                 withTimeoutOrNull(RUN_TIMEOUT_MS) {
                     var timer: Job? = null
@@ -369,6 +372,10 @@ class AssistSession(
                                 timer?.cancel()
                                 timer = launch {
                                     delay(SPEECH_SAFETY_MS)
+                                    // HA's VAD never heard the end (e.g. steady background noise):
+                                    // end the audio stream (SatelliteSink.finish), so HA transcribes
+                                    // what it has and answers instead of waiting for more.
+                                    Log.i(TAG, "No end of speech after ${SPEECH_SAFETY_MS / 1000} s; ending the audio")
                                     streamer.end()
                                 }
                             }
@@ -393,11 +400,15 @@ class AssistSession(
                             }
                             VoiceEvent.TTS_END -> ttsUrl = event.data["url"]?.takeIf { it.isNotEmpty() }
                             VoiceEvent.ERROR -> {
+                                runOpen = false
                                 errorCode = event.data["code"].orEmpty()
                                 errorMessage = event.data["message"].orEmpty()
                                 break
                             }
-                            VoiceEvent.RUN_END -> break
+                            VoiceEvent.RUN_END -> {
+                                runOpen = false
+                                break
+                            }
                             else -> Unit
                         }
                     }
@@ -407,6 +418,12 @@ class AssistSession(
             } finally {
                 streamer.end()
                 listeners.forEach { it.cancel() }
+                // Closed or timed out before HA ended the run: abort it there too (a stop request
+                // aborts), or HA keeps it open and ends every later request at once.
+                if (runOpen) {
+                    runOpen = false
+                    device.send(Outgoing.voiceAssistantRequest(start = false))
+                }
             }
         }
 
@@ -415,10 +432,8 @@ class AssistSession(
             return TurnOutcome.Yielded(name)
         }
         if (notSent) return TurnOutcome.Failed(SessionError.SatelliteNotConnected)
-        if (!finished) {
-            device.send(Outgoing.voiceAssistantRequest(start = false))
-            return TurnOutcome.Failed(SessionError.Timeout)
-        }
+        // The run was already stopped in HA by the `finally` above.
+        if (!finished) return TurnOutcome.Failed(SessionError.Timeout)
         errorCode?.let { code ->
             Log.i(TAG, "Satellite pipeline error: $code")
             return if (heardNoSpeech || code == "stt-no-text-recognized") TurnOutcome.NoSpeech
@@ -462,13 +477,20 @@ class AssistSession(
         }
     }
 
-    /** The ESPHome API: each chunk as a `VoiceAssistantAudio` message; HA ends the run itself. */
+    /**
+     * The ESPHome API: each chunk as a `VoiceAssistantAudio` message. Usually HA's VAD ends the
+     * speech itself; when the app ends the audio first (the 10 s safety net), an empty message
+     * with `end` set tells HA the stream is over, so it transcribes what it has. (A stop request
+     * would instead abort the run with no answer.)
+     */
     private class SatelliteSink(private val device: SatelliteDevice) : AudioSink {
         override suspend fun send(pcm: ByteArray) {
             device.send(Outgoing.audio(pcm))
         }
 
-        override suspend fun finish() = Unit
+        override suspend fun finish() {
+            device.send(Outgoing.audio(ByteArray(0), end = true))
+        }
     }
 
     /**
