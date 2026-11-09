@@ -73,6 +73,24 @@
             android:name=".ui.timer.TimerOverlayService"
             android:exported="false" />
 
+        <!-- Idle screen (SPEC section 11): an Activity, and the same content as the system screen saver. -->
+        <activity
+            android:name=".ui.idle.IdleActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.BayitVoice.Idle" />
+
+        <service
+            android:name=".ui.idle.IdleDreamService"
+            android:exported="true"
+            android:label="@string/idle_dream_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".service.WakeWordService"
             android:exported="false"

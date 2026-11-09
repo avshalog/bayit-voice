@@ -51,6 +51,7 @@ import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.NetworkInfo
+import com.avshy.bayitvoice.ui.idle.IdleSettings
 
 /** Onboarding and settings. */
 class MainActivity : ComponentActivity() {
@@ -244,6 +245,10 @@ private fun SettingsScreen(
                 onOpenGuide = onOpenGuide,
                 satellite = satellite,
             )
+
+            HorizontalDivider()
+            SectionTitle(R.string.settings_section_idle)
+            IdleSettings()
 
             HorizontalDivider()
             TextButton(onClick = onOpenAbout) { Text(stringResource(R.string.about_title)) }

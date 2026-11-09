@@ -156,6 +156,31 @@ class AppSettings private constructor(context: Context) {
             bytes.joinToString("") { "%02x".format(it) }.also { prefs.edit { putString(KEY_SATELLITE_MAC, it) } }
         }
 
+    /** Idle screen (SPEC section 11): night mode starts at this minute of the day. */
+    var idleNightStartMinute: Int
+        get() = prefs.getInt(KEY_IDLE_NIGHT_START, DEFAULT_NIGHT_START)
+        set(value) = prefs.edit { putInt(KEY_IDLE_NIGHT_START, value.coerceIn(0, MINUTES_PER_DAY - 1)) }
+
+    /** Idle screen: night mode ends at this minute of the day. Equal to the start = night mode off. */
+    var idleNightEndMinute: Int
+        get() = prefs.getInt(KEY_IDLE_NIGHT_END, DEFAULT_NIGHT_END)
+        set(value) = prefs.edit { putInt(KEY_IDLE_NIGHT_END, value.coerceIn(0, MINUTES_PER_DAY - 1)) }
+
+    /** Idle screen: show the Hebrew date under the Gregorian one. Null = follow the UI language. */
+    var idleHebrewDate: Boolean?
+        get() = if (prefs.contains(KEY_IDLE_HEBREW_DATE)) prefs.getBoolean(KEY_IDLE_HEBREW_DATE, false) else null
+        set(value) = prefs.edit { if (value == null) remove(KEY_IDLE_HEBREW_DATE) else putBoolean(KEY_IDLE_HEBREW_DATE, value) }
+
+    /** Idle screen: backlight level 0..1 during the day; null = follow the system (including auto-brightness). */
+    var idleDayBrightness: Float?
+        get() = prefs.getFloat(KEY_IDLE_DAY_BRIGHTNESS, -1f).takeIf { it >= 0f }
+        set(value) = prefs.edit { putFloat(KEY_IDLE_DAY_BRIGHTNESS, value?.coerceIn(0.02f, 1f) ?: -1f) }
+
+    /** Idle screen: at night turn the screen off instead of showing a dim red clock. */
+    var idleNightScreenOff: Boolean
+        get() = prefs.getBoolean(KEY_IDLE_NIGHT_SCREEN_OFF, false)
+        set(value) = prefs.edit { putBoolean(KEY_IDLE_NIGHT_SCREEN_OFF, value) }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -196,6 +221,9 @@ class AppSettings private constructor(context: Context) {
     companion object {
         const val DEFAULT_AUTO_CLOSE_SECONDS = 5
         const val DEFAULT_WAKE_THRESHOLD = 0.5f
+        const val MINUTES_PER_DAY = 24 * 60
+        const val DEFAULT_NIGHT_START = 23 * 60
+        const val DEFAULT_NIGHT_END = 6 * 60
 
         private const val KEY_HOME_URL = "home_url"
         private const val KEY_EXTERNAL_URL = "external_url"
@@ -220,6 +248,11 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_SATELLITE_KEY = "satellite_key"
         private const val KEY_SATELLITE_MAC = "satellite_mac"
         private const val KEY_OLD_VERSION_NOTICE = "old_version_notice_shown"
+        private const val KEY_IDLE_NIGHT_START = "idle_night_start"
+        private const val KEY_IDLE_NIGHT_END = "idle_night_end"
+        private const val KEY_IDLE_HEBREW_DATE = "idle_hebrew_date"
+        private const val KEY_IDLE_DAY_BRIGHTNESS = "idle_day_brightness"
+        private const val KEY_IDLE_NIGHT_SCREEN_OFF = "idle_night_screen_off"
         private const val LEGACY_KEY_URL = "server_url"
         private const val LEGACY_SECRETS_FILE = "secrets"
 

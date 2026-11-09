@@ -155,6 +155,24 @@
     <string name="link_pair_help">In HA: Settings › Devices and services › Discovered › Add, and paste the key.</string>
     <string name="error_satellite_not_connected">HA is not connected to this device. Add it in HA (Settings › Devices and services), or check that both are on the same network.</string>
 
+    <!-- Idle screen -->
+    <string name="idle_dream_label">Bayit Voice clock</string>
+    <string name="settings_section_idle">Idle screen</string>
+    <string name="idle_help">A clock, the date and (soon) the weather, for a device that stays in one place. Use it as the system screen saver, or open it yourself.</string>
+    <string name="idle_open">Open idle screen</string>
+    <string name="idle_screensaver_settings">Screen saver settings</string>
+    <string name="idle_screensaver_help">In the screen saver settings choose \"Bayit Voice clock\" and when to start it (for example while charging).</string>
+    <string name="idle_hebrew_date">Show the Hebrew date</string>
+    <string name="idle_night_start">Night starts</string>
+    <string name="idle_night_end">Night ends</string>
+    <string name="idle_night_help">At night only a dim red clock is shown. Use the same time for both to turn night mode off.</string>
+    <string name="idle_time_hint">e.g. 23:00</string>
+    <string name="idle_night_mode">At night</string>
+    <string name="idle_night_dim_clock">Dim red clock</string>
+    <string name="idle_night_screen_off">Screen off (the wake word, a timer or an announcement still turns it on)</string>
+    <string name="idle_day_brightness_fixed">Fixed brightness during the day</string>
+    <string name="idle_brightness_help">Off: the idle screen follows the phone\'s brightness, including auto-brightness. It changes gradually over a few minutes between day and night, and only while the idle screen is showing; the phone\'s own setting is never changed.</string>
+
     <!-- Timers -->
     <string name="timer_default_name">Timer</string>
     <string name="timer_finished_text">%1$s timer finished</string>

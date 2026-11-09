@@ -152,6 +152,24 @@
     <string name="link_pair_help">ב-HA: הגדרות › מכשירים ושירותים › \"התגלה\" › הגדר, והדבק את המפתח.</string>
     <string name="error_satellite_not_connected">HA לא מחובר למכשיר הזה. הוסף אותו ב-HA (הגדרות › מכשירים ושירותים), או בדוק ששניהם באותה רשת.</string>
 
+    <!-- Idle screen -->
+    <string name="idle_dream_label">שעון בית</string>
+    <string name="settings_section_idle">מסך המתנה</string>
+    <string name="idle_help">שעון, תאריך ו(בקרוב) מזג אוויר, למכשיר שקבוע במקום אחד. אפשר להגדיר אותו כשומר המסך של המערכת, או לפתוח אותו ידנית.</string>
+    <string name="idle_open">פתח מסך המתנה</string>
+    <string name="idle_screensaver_settings">הגדרות שומר מסך</string>
+    <string name="idle_screensaver_help">בהגדרות שומר המסך בחרו \"שעון בית\" ומתי להפעיל אותו (למשל בזמן טעינה).</string>
+    <string name="idle_hebrew_date">הצג תאריך עברי</string>
+    <string name="idle_night_start">תחילת לילה</string>
+    <string name="idle_night_end">סוף לילה</string>
+    <string name="idle_night_help">בלילה מוצג רק שעון אדום ועמום. אותה שעה בשני השדות מבטלת את מצב הלילה.</string>
+    <string name="idle_time_hint">לדוגמה 23:00</string>
+    <string name="idle_night_mode">בלילה</string>
+    <string name="idle_night_dim_clock">שעון אדום עמום</string>
+    <string name="idle_night_screen_off">מסך כבוי (מילת ההפעלה, טיימר או הכרזה עדיין מדליקים אותו)</string>
+    <string name="idle_day_brightness_fixed">תאורה קבועה ביום</string>
+    <string name="idle_brightness_help">כשהאפשרות כבויה, מסך ההמתנה עוקב אחרי הבהירות של הטלפון, כולל בהירות אוטומטית. המעבר בין יום ללילה הדרגתי, במשך כמה דקות, ורק בזמן שמסך ההמתנה מוצג. הגדרת הבהירות של הטלפון עצמו לא משתנה.</string>
+
     <!-- Timers -->
     <string name="timer_default_name">טיימר</string>
     <string name="timer_finished_text">טיימר של %1$s הסתיים</string>
