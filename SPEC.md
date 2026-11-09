@@ -307,7 +307,7 @@ Satellite-mode acceptance:
 
 ### Phase 4: Optional
 
-- Merge the Full screen session style with an idle satellite screen (clock, active timers, announcements), so a fixed device needs no separate clock app. Show a design first.
+- Idle screen (section 11): our own always-on display for a fixed device (clock, dates, live weather scene, timers, music in the room, night mode), so it needs no separate clock or screen-saver app. Design approved (`docs/idle-screen-demo.html`).
 
 - Record-only experimental wake word (section 6.1).
 - microWakeWord engine behind the `WakeWordEngine` interface, if measurements show it is worth it (lower CPU, or better accuracy with its available models).
@@ -336,3 +336,37 @@ Registers the app in HA as a real voice satellite, so HA's built-in timers, anno
 - **New UI** (show designs before building): satellite pairing (status, IP:port, key), timer countdown and ringing screen.
 - **Resources:** one idle TCP socket and an mDNS registration; no extra wake locks; the service stays UI-free (section 7).
 - Ava (`brownard/Ava`, Apache-2.0) is an existing Android ESPHome satellite; use it as a reference for message order and HA quirks, keeping its notice if any code is reused.
+
+## 11. Idle screen (Phase 4)
+
+A device fixed in the home always shows the app's own display, so it needs no separate clock, weather or screen-saver app. The approved design is `docs/idle-screen-demo.html` (a live, animated mock-up).
+
+- **Hosts.** The same Compose content runs in two places:
+  - the system **screen saver** (a `DreamService`), shown while the device charges or is docked, once the user picks the app under Settings → Display → Screen saver;
+  - an **idle-screen Activity** the user opens from settings, shown over the lock screen and kept on while charging, for devices whose system has no screen saver.
+  The session UI, announcements and a ringing timer open over it as today. When they close, the idle screen is still there underneath (Activity), or the system starts the screen saver again (Dream).
+- **Layout** (designed first for a 6.5" phone in landscape, about 20:9; it also works in portrait and on tablets). The weather scene fills the screen inside a thin black frame with rounded corners. Everything else sits on the scene, sized to be read from 2–3 m:
+  - the clock, about half the screen height, in the system's 12/24-hour format;
+  - the Gregorian date, and under it the Hebrew date (`android.icu.util.HebrewCalendar`, offline). The Hebrew date has an on/off setting, on by default when the UI language is Hebrew;
+  - the weather: current temperature, the condition in words, and today's high and low; humidity and wind in a glass chip at the bottom;
+  - the next running timer in a large glass chip at the bottom (the same timers as section 10).
+- **Weather scene.** Drawn in code, with no bundled images: a gradient sky by condition and time of day; layered ridges fading into haze; Mediterranean woodland in front (rounded oaks and carobs, stone pines, the odd cypress, shrubs, each crown a single irregular shape shaded from the light's side); soft drifting clouds; sun with glow and rays, or moon and stars; rain, lightning, fog and snow as needed. Every HA weather condition maps to a scene; sunrise and sunset come from `sun.sun`, with fixed hours as a fallback. Motion is slow and subtle.
+- **Data.** Entities are chosen in settings, never hard-coded: one `weather` entity and the room's `media_player`.
+  - *Satellite link:* the device asks HA for those entities' states over the ESPHome API (`SubscribeHomeAssistantStates` → `SubscribeHomeAssistantStateResponse` per entity and attribute → `HomeAssistantStateResponse`). Today's high and low come from `weather.get_forecasts`, called as a Home Assistant action with a response, if the API and HA version support it (verify against `aioesphomeapi` first). Actions need "Allow the device to perform Home Assistant actions" on the device's page in HA; settings explain this. Without it, the high and low and the music controls are hidden; nothing else is affected.
+  - *Direct link:* the same data over the existing WebSocket (`subscribe_entities`, and `call_service` with `return_response` for the forecast).
+- **Music.** While the room's media player plays, the screen shows what is playing instead of the weather details: artwork, title, artist, progress, play/pause, next and volume. It goes back when playback stops. Controls are HA actions on that media player.
+- **Night mode.** Between hours set in settings (default 23:00–06:00), only the clock shows, dim red on black, with no animation. In every mode the content shifts by a few pixels each minute so a static screen does not burn in.
+- **Resources.** Animation runs only while the idle screen is visible, at about 30 fps. Scene geometry and gradients are built once per size and condition, with no allocations per frame, and drawing stops in night mode. The background service is unchanged: it loads no idle-screen code (section 7).
+- **Settings** ("Idle screen" section): weather entity, media player, night hours, Hebrew date, a button to open the idle screen, and a shortcut to the system screen-saver settings.
+- **Stages,** each checked on a device before the next:
+  1. Hosts, clock, dates, night mode and burn-in shift, on a plain background.
+  2. The weather scene engine and weather data, with the forecast high and low.
+  3. Timer chip and music.
+- **Acceptance:**
+  - The clock and the timer are readable from 3 m on a 6.5" phone.
+  - The screen saver starts by itself on the charger.
+  - A conversation opened by wake word over the idle screen returns to it afterwards.
+  - The scene matches HA's current weather, and day or night.
+  - Music started in the room appears within 2 s, and its controls work.
+  - Night mode switches on and off at the set hours.
+  - CPU use while the idle screen is visible stays within an agreed budget (measured, then recorded here).

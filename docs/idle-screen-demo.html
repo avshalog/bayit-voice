@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idle Screen Weather</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@200;300;400;500;600&display=swap">
+<style>
+/* Design demo for the satellite idle screen. The weather scene fills the whole screen inside a thin black
+   rounded frame; the clock, dates and weather sit on top of the scene. Scenes are procedural (layered ridges
+   with atmospheric perspective, pine silhouettes, mist, soft light), so they can be ported to a Compose Canvas. */
+:root { --page: #0c0d10; --text: #fff; --muted: #a7acb6; --line: rgba(255,255,255,0.14); color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font-family: "Heebo", system-ui, sans-serif; }
+.wrap { max-width: 1320px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 20px; }
+.picker { display: flex; flex-wrap: wrap; gap: 8px; }
+.picker button { font: inherit; font-size: 14px; color: var(--text); background: rgba(255,255,255,0.08);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.picker button[aria-pressed="true"] { background: #fff; color: #0c0d10; border-color: #fff; }
+/* A 6.5" phone in landscape: about 20:9. Sizes are in container units so the demo scales like the device. */
+.stage { width: 100%; aspect-ratio: 20 / 9; position: relative; }
+/* The device: a thin black border with rounded corners around a full-bleed scene. */
+.device { position: absolute; inset: 0; border-radius: 34px; background: #000; padding: 8px; container-type: size; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 26px; overflow: hidden; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Text sized to read from 2-3 m on a 6.5" screen: clock about half the screen height. */
+.overlay { position: absolute; inset: 0; padding: 4cqh 3.4cqw; display: flex; flex-direction: column; text-shadow: 0 2px 22px rgba(0,0,0,0.45); }
+.top { display: flex; justify-content: space-between; align-items: flex-start; }
+.clock { display: flex; flex-direction: column; align-items: flex-start; }
+.time { font-weight: 300; font-size: 50cqh; line-height: 0.82; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; direction: ltr; }
+.date { font-weight: 500; font-size: 8cqh; margin-top: 3cqh; }
+.hdate { font-weight: 400; font-size: 7cqh; opacity: 0.9; margin-top: 0.4cqh; }
+.now { text-align: end; }
+.temp { font-weight: 300; font-size: 24cqh; line-height: 0.88; direction: ltr; }
+.cond { font-size: 8cqh; font-weight: 500; margin-top: 1cqh; }
+.hilo { font-size: 7cqh; opacity: 0.92; margin-top: 0.4cqh; }
+.bottom { margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end; }
+.glass { background: rgba(8, 12, 20, 0.3); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; text-shadow: none; }
+.details { display: flex; gap: 3cqw; padding: 1.6cqh 2.4cqw; font-size: 6.5cqh; font-weight: 500; }
+.details small { opacity: 0.75; font-size: 5cqh; font-weight: 400; margin-inline-end: 0.6cqw; }
+.timer { display: flex; align-items: center; gap: 1.2cqw; padding: 1.6cqh 2.6cqw; font-size: 8cqh; }
+.timer b { font-weight: 600; font-size: 11cqh; line-height: 1; font-variant-numeric: tabular-nums; direction: ltr; }
+.note { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 900px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="picker" role="group" aria-label="מצב מזג אוויר" id="picker"></div>
+  <div class="stage">
+    <div class="device">
+      <div class="screen">
+        <canvas id="sky"></canvas>
+        <div class="overlay">
+          <div class="top">
+            <div class="clock">
+              <div class="time" id="time">15:42</div>
+              <div class="date">יום שני, 9 בנובמבר 2026</div>
+              <div class="hdate">כ״ט בחשוון ה׳תשפ״ז</div>
+            </div>
+            <div class="now">
+              <div class="temp" id="temp">20°</div>
+              <div class="cond" id="cond">שמשי ובהיר</div>
+              <div class="hilo" id="hilo">↑24°  ↓13°</div>
+            </div>
+          </div>
+          <div class="bottom">
+            <div class="details glass">
+              <span><small>לחות</small><b id="hum">32%</b></span>
+              <span><small>רוח</small><b id="wind">15 קמ״ש</b></span>
+            </div>
+            <div class="timer glass">⏳ פסטה <b>06:12</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note">הדגמת סגנון בלבד: נוף בשכבות עם אובך, חורש ים-תיכוני בחזית (אלונים, אורני ים, ברושים ושיחים), ערפל בין הרכסים, אור שמש וקרניים, עננים רכים, גשם, ברקים, כוכבים וציפורים מדי פעם. הכול מצויר בקוד, כך שאפשר לבנות אותו ב-Canvas של Compose. במכשיר ההנפשה רצה רק כשהמסך מוצג ונעצרת במצב לילה.</p>
+</div>
+<script>
+(() => {
+  // sky: zenith, mid, horizon. far/near: the farthest and nearest ridge colours; ridges in between are blended.
+  const SCENES = {
+    sunny:   { label: "שמשי", cond: "שמשי ובהיר", temp: 20, hi: 24, lo: 13, hum: 32, wind: 15, time: "15:42",
+               sky: ["#3c7fd6", "#8fc0ee", "#f4e9d2"], sun: [0.44, 0.44, 1], rays: 1, clouds: 0.25, cloud: [255, 252, 246],
+               far: "#a9c2d6", near: "#1d3a2f", mist: [240, 236, 226], birds: 1 },
+    partly:  { label: "מעונן חלקית", cond: "מעונן חלקית", temp: 18, hi: 21, lo: 12, hum: 48, wind: 12, time: "15:42",
+               sky: ["#4a7ec4", "#9cc1e4", "#e9e4d8"], sun: [0.42, 0.42, 0.8], rays: 0.6, clouds: 0.6, cloud: [252, 252, 252],
+               far: "#a7bccb", near: "#20392f", mist: [232, 232, 228], birds: 1 },
+    cloudy:  { label: "מעונן", cond: "מעונן", temp: 16, hi: 17, lo: 11, hum: 66, wind: 18, time: "15:42",
+               sky: ["#7c8794", "#a3acb6", "#cdd1d4"], clouds: 1, cloud: [228, 231, 235],
+               far: "#a3abb2", near: "#2a352f", mist: [214, 218, 222] },
+    rain:    { label: "גשם", cond: "גשום", temp: 13, hi: 15, lo: 10, hum: 88, wind: 24, time: "15:42",
+               sky: ["#3d4551", "#5e6874", "#8a929b"], clouds: 1, cloud: [152, 160, 170], rain: 1,
+               far: "#7d868e", near: "#1c2622", mist: [150, 158, 166] },
+    storm:   { label: "סופה", cond: "סופת רעמים", temp: 12, hi: 14, lo: 9, hum: 92, wind: 38, time: "15:42",
+               sky: ["#1b202b", "#323a48", "#545d6b"], clouds: 1, cloud: [96, 104, 118], rain: 1.5, lightning: 1,
+               far: "#4f5865", near: "#111816", mist: [96, 104, 116] },
+    fog:     { label: "ערפל", cond: "ערפל", temp: 11, hi: 16, lo: 9, hum: 96, wind: 4, time: "07:15",
+               sky: ["#a4acb3", "#c2c8cc", "#dcdfe0"], clouds: 0.2, cloud: [236, 238, 240], fog: 1,
+               far: "#cfd3d5", near: "#4c5752", mist: [226, 229, 231] },
+    sunset:  { label: "שקיעה", cond: "בהיר", temp: 17, hi: 24, lo: 13, hum: 44, wind: 9, time: "17:05",
+               sky: ["#2b3a6e", "#c26a73", "#f6b35c"], sun: [0.46, 0.6, 1], rays: 0.7, sunColor: [255, 196, 120], clouds: 0.3, cloud: [255, 196, 170],
+               far: "#9a6f86", near: "#1a1625", mist: [246, 178, 128], birds: 1 },
+    night:   { label: "לילה בהיר", cond: "בהיר", temp: 14, hi: 24, lo: 13, hum: 58, wind: 8, time: "21:48",
+               sky: ["#050a1a", "#122049", "#2d3c6c"], moon: [0.44, 0.34], stars: 1, clouds: 0.15, cloud: [110, 124, 168],
+               far: "#2a3962", near: "#060a12", mist: [60, 76, 120] },
+  };
+
+  const canvas = document.getElementById("sky");
+  const ctx = canvas.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, DPR = 1, S = SCENES.sunny, t0 = performance.now();
+  let clouds = [], stars = [], drops = [], ridges = [], birds = [], flash = 0, nextFlash = 2, boltSeed = 1;
+  let seed = 11;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const hex = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const lerp = (a, b, k) => a.map((v, i) => Math.round(v + (b[i] - v) * k));
+  const rgb = (a, al = 1) => `rgba(${a[0]},${a[1]},${a[2]},${al})`;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const r = canvas.getBoundingClientRect(); W = r.width; H = r.height;
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    build();
+  }
+
+  // Smooth 1D value noise for natural ridgelines.
+  function noise1(seedOff) {
+    const pts = Array.from({ length: 64 }, () => rnd());
+    return (x) => { const i = Math.floor(x), f = x - i, a = pts[(i + seedOff) & 63], b = pts[(i + 1 + seedOff) & 63]; const s = f * f * (3 - 2 * f); return a + (b - a) * s; };
+  }
+  function fbm(n, x) { return n(x) * 0.55 + n(x * 2.1 + 7) * 0.28 + n(x * 4.3 + 13) * 0.17; }
+
+  // A crown is one closed outline: an ellipse whose radius wobbles at a few frequencies, with a flatter base.
+  // `shape` bends the ellipse: "round" (oak, carob, bush), "umbrella" (stone pine), "flame" (cypress).
+  function crown(cx, cy, rx, ry, shape) {
+    const a = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28], pts = [];
+    for (let i = 0; i < 72; i++) {
+      const th = (i / 72) * 6.283, s = Math.sin(th), c = Math.cos(th);
+      let r = 1 + 0.09 * Math.sin(3 * th + a[0]) + 0.06 * Math.sin(5 * th + a[1]) + 0.035 * Math.sin(13 * th + a[2]) + (rnd() - 0.5) * 0.045;
+      let x = c * rx * r, y = s * ry * r;
+      if (s > 0) y *= shape === "umbrella" ? 0.45 : 0.62;            // flatter underside
+      if (shape === "flame") x *= 1 - 0.55 * Math.max(0, -s);        // narrow to a point at the top
+      pts.push([cx + x, cy + y]);
+    }
+    return pts;
+  }
+
+  // mode: 0 = bare ridge; "line" = distant woodland read as a bumpy canopy edge; a number = tree size for that layer.
+  function makeRidge(base, amp, freq, mode, off) {
+    const n = noise1(off), pts = [];
+    const canopy = noise1(off + 5);
+    for (let x = -4; x <= W + 8; x += 3) {
+      let y = H * (base - amp * fbm(n, x / W * freq));
+      if (mode) {
+        // Undergrowth / distant treetops: rounded bumps of varying height with occasional clearings.
+        const scale = mode === "line" ? 0.016 : mode * 0.09;
+        const cover = canopy(x / W * 9) > 0.32 ? 1 : 0.25;
+        y -= H * scale * cover * Math.sqrt(Math.abs(Math.sin(x / (H * scale * 1.6 + 2) + canopy((x / W * 30) % 60) * 3)));
+      }
+      pts.push([x, y]);
+    }
+    const yAt = (x) => pts[Math.max(0, Math.min(pts.length - 1, Math.round((x + 4) / 3)))][1];
+    const trees = [];
+    if (typeof mode === "number") {
+      // Mostly oaks / carobs and low bushes, some stone pines, a rare cypress. Clumps and clearings.
+      let x = -H * mode * 0.4;
+      while (x < W + H * mode) {
+        const r = rnd(), h = H * mode * (0.55 + rnd() * 0.7), y = yAt(x) + h * 0.04;
+        const kind = r < 0.5 ? "oak" : r < 0.78 ? "bush" : r < 0.92 ? "pine" : "cypress";
+        const t = { kind, x, y, h, hue: rnd(), tone: (rnd() - 0.5) * 0.18, lean: (rnd() - 0.5) * h * 0.12 };
+        if (kind === "oak") t.crown = crown(x + t.lean, y - h * 0.6, h * (0.45 + rnd() * 0.18), h * (0.36 + rnd() * 0.1), "round");
+        if (kind === "bush") t.crown = crown(x, y - h * 0.16, h * (0.32 + rnd() * 0.16), h * (0.2 + rnd() * 0.06), "round");
+        if (kind === "pine") t.crown = crown(x + t.lean * 2.5, y - h * 0.9, h * (0.42 + rnd() * 0.16), h * (0.14 + rnd() * 0.05), "umbrella");
+        if (kind === "cypress") t.crown = crown(x, y - h * 0.62, h * (0.09 + rnd() * 0.03), h * 0.6, "flame");
+        trees.push(t);
+        x += Math.max(4, h * (rnd() < 0.2 ? 1.1 + rnd() * 1.6 : 0.35 + rnd() * 0.55));
+      }
+      trees.sort((a, b) => a.y - b.y);
+    }
+    return { pts, trees };
+  }
+
+  function makeCloud(w, tint, shade) {
+    const h = w * 0.36, pad = w * 0.3;
+    const c = document.createElement("canvas");
+    c.width = Math.round((w + pad * 2) * DPR); c.height = Math.round((h + pad * 2) * DPR);
+    const g = c.getContext("2d"); g.scale(DPR, DPR);
+    const dark = lerp(tint, [40, 46, 60], shade);
+    for (let i = 0; i < 26; i++) {
+      const u = rnd(), arch = Math.sin(u * Math.PI);
+      const x = pad + w * (0.06 + 0.88 * u), y = pad + h * (0.82 - 0.5 * arch * (0.5 + 0.5 * rnd()));
+      const r = w * (0.07 + 0.12 * arch * (0.6 + rnd() * 0.6));
+      const grd = g.createRadialGradient(x, y - r * 0.45, r * 0.05, x, y, r);
+      grd.addColorStop(0, rgb(tint, 0.9)); grd.addColorStop(0.6, rgb(lerp(tint, dark, 0.5), 0.55)); grd.addColorStop(1, rgb(dark, 0));
+      g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill();
+    }
+    return { img: c, w: w + pad * 2, h: h + pad * 2 };
+  }
+
+  function build() {
+    if (W < 10 || H < 10) return;
+    seed = 11;
+    ridges = [
+      makeRidge(0.62, 0.16, 2.2, 0, 3),
+      makeRidge(0.70, 0.13, 2.8, "line", 17),
+      makeRidge(0.78, 0.11, 3.4, "line", 29),
+      makeRidge(0.87, 0.09, 4.0, 0.07, 41),
+      makeRidge(1.0, 0.08, 4.6, 0.17, 53),
+    ];
+    clouds = [];
+    const n = Math.round(2 + S.clouds * 10);
+    for (let i = 0; i < n; i++) {
+      const depth = rnd(), w = W * (0.2 + 0.32 * depth) * (0.8 + rnd() * 0.5);
+      clouds.push({ ...makeCloud(w, S.cloud, (S.rain ? 0.45 : 0.18) * (0.4 + depth * 0.6)),
+        x: rnd() * (W + w), y: H * (0.02 + 0.34 * rnd()) - (S.clouds > 0.9 ? H * 0.06 : 0),
+        speed: (3 + depth * 9) * (S.lightning ? 2 : 1), alpha: (0.5 + depth * 0.5) * Math.min(1, 0.35 + S.clouds), depth });
+    }
+    clouds.sort((a, b) => a.depth - b.depth);
+    stars = [];
+    if (S.stars) for (let i = 0; i < 260; i++) stars.push({ x: rnd() * W, y: rnd() * H * 0.6, r: 0.3 + rnd() * rnd() * 1.6, p: rnd() * 6.28, f: 0.4 + rnd() * 1.4 });
+    drops = [];
+    if (S.rain) for (let i = 0; i < 420 * S.rain; i++) drops.push({ x: rnd() * W * 1.3, y: rnd() * H, l: 14 + rnd() * 26, v: 700 + rnd() * 500, z: rnd() });
+    birds = [];
+    if (S.birds) for (let i = 0; i < 5; i++) birds.push({ dx: rnd() * 60, dy: rnd() * 30, ph: rnd() * 6, s: 0.7 + rnd() * 0.5 });
+  }
+
+  function drawRidge(r, col, top, mistCol, mistAmt) {
+    ctx.beginPath(); ctx.moveTo(-4, H);
+    for (const [x, y] of r.pts) ctx.lineTo(x, y);
+    ctx.lineTo(W + 8, H); ctx.closePath();
+    const minY = Math.min(...r.pts.map(p => p[1]));
+    const g = ctx.createLinearGradient(0, minY, 0, H);
+    g.addColorStop(0, rgb(top)); g.addColorStop(1, rgb(col)); ctx.fillStyle = g; ctx.fill();
+    // Light comes from the sun's (or moon's) side: each crown is shaded from a lit edge to a shadowed one,
+    // darker underneath, and casts a soft shadow on the ground away from the light.
+    const lx = S.sun ? S.sun[0] * W : S.moon ? S.moon[0] * W : W * 0.5;
+    const light = S.sunColor || (S.sun ? [255, 244, 214] : S.mist), litK = S.sun ? 0.32 : S.moon ? 0.14 : 0.1;
+    // Three foliage families (olive, deep green, grey-green) blended into the layer colour, so depth still reads.
+    const fam = [[96, 110, 70], [52, 82, 58], [110, 120, 104]];
+    for (const t of r.trees) {
+      const base = lerp(col, fam[Math.floor(t.hue * 3)], 0.18);
+      const c = t.tone > 0 ? lerp(base, [255, 255, 255], t.tone * 0.35) : lerp(base, [0, 0, 0], -t.tone);
+      const side = Math.sign(lx - t.x) || 1;
+      const xs = t.crown.map(p => p[0]), ys = t.crown.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      // Ground shadow.
+      ctx.fillStyle = "rgba(0,0,0,0.16)";
+      ctx.beginPath(); ctx.ellipse(t.x - side * t.h * 0.18, t.y, (x1 - x0) * 0.5, t.h * 0.05, 0, 0, 6.283); ctx.fill();
+      // Trunk.
+      const trunk = lerp(c, [30, 26, 22], 0.55);
+      if (t.kind === "oak" || t.kind === "pine") {
+        const topY = t.kind === "pine" ? y1 - t.h * 0.02 : (y0 + y1) / 2, tx = t.kind === "pine" ? t.x + t.lean * 2.5 : t.x + t.lean, w = t.h * (t.kind === "pine" ? 0.028 : 0.05);
+        ctx.fillStyle = rgb(trunk);
+        ctx.beginPath(); ctx.moveTo(t.x - w, t.y); ctx.quadraticCurveTo((t.x + tx) / 2 - w * 0.6, (t.y + topY) / 2, tx - w * 0.45, topY);
+        ctx.lineTo(tx + w * 0.45, topY); ctx.quadraticCurveTo((t.x + tx) / 2 + w * 0.6, (t.y + topY) / 2, t.x + w, t.y); ctx.closePath(); ctx.fill();
+      }
+      // Crown: lit side to shadow side, then darker toward the underside.
+      ctx.beginPath(); ctx.moveTo(...t.crown[0]); for (const p of t.crown) ctx.lineTo(...p); ctx.closePath();
+      const gx = ctx.createLinearGradient(side > 0 ? x1 : x0, y0, side > 0 ? x0 : x1, y1);
+      gx.addColorStop(0, rgb(lerp(c, light, litK))); gx.addColorStop(0.55, rgb(c)); gx.addColorStop(1, rgb(lerp(c, [0, 0, 0], 0.22)));
+      ctx.fillStyle = gx; ctx.fill();
+      const gy = ctx.createLinearGradient(0, y0, 0, y1);
+      gy.addColorStop(0, "rgba(0,0,0,0)"); gy.addColorStop(0.6, "rgba(0,0,0,0)"); gy.addColorStop(1, "rgba(0,0,0,0.22)");
+      ctx.fillStyle = gy; ctx.fill();
+    }
+    // Mist pooled at the foot of each ridge.
+    if (mistAmt > 0) {
+      const g2 = ctx.createLinearGradient(0, H * 0.5, 0, H);
+      g2.addColorStop(0, rgb(mistCol, 0)); g2.addColorStop(1, rgb(mistCol, mistAmt));
+      ctx.fillStyle = g2; ctx.fillRect(0, minY, W, H - minY);
+    }
+  }
+
+  function frame(now) {
+    const t = reduce ? 0 : (now - t0) / 1000;
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.75);
+    sky.addColorStop(0, S.sky[0]); sky.addColorStop(0.55, S.sky[1]); sky.addColorStop(1, S.sky[2]);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    for (const st of stars) {
+      const a = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * st.f + st.p));
+      ctx.fillStyle = `rgba(232,238,255,${a})`; ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 6.283); ctx.fill();
+    }
+
+    if (S.sun) {
+      const [ux, uy, k] = S.sun, sx = W * ux, sy = H * uy, R = H * 0.07, sc = S.sunColor || [255, 238, 200];
+      let g = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * 0.9);
+      g.addColorStop(0, rgb(sc, 0.55 * k)); g.addColorStop(0.2, rgb(sc, 0.2 * k)); g.addColorStop(1, rgb(sc, 0));
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      if (S.rays) {
+        ctx.save(); ctx.translate(sx, sy); ctx.rotate(t * 0.01);
+        for (let i = 0; i < 14; i++) {
+          ctx.rotate(6.283 / 14);
+          const rg = ctx.createLinearGradient(0, 0, W * 0.9, 0);
+          rg.addColorStop(0, rgb(sc, 0.10 * S.rays * k)); rg.addColorStop(1, rgb(sc, 0));
+          ctx.fillStyle = rg; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W * 0.9, -H * 0.05); ctx.lineTo(W * 0.9, H * 0.05); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      }
+      g = ctx.createRadialGradient(sx, sy, 0, sx, sy, R * 1.4);
+      g.addColorStop(0, rgb([255, 255, 248], k)); g.addColorStop(0.6, rgb(sc, k)); g.addColorStop(1, rgb(sc, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, R * 1.4, 0, 6.283); ctx.fill();
+    }
+    if (S.moon) {
+      const mx = W * S.moon[0], my = H * S.moon[1], R = H * 0.05;
+      let g = ctx.createRadialGradient(mx, my, 0, mx, my, R * 8);
+      g.addColorStop(0, "rgba(196,212,255,0.3)"); g.addColorStop(1, "rgba(196,212,255,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.beginPath(); ctx.arc(mx, my, R, 0, 6.283); ctx.clip();
+      g = ctx.createRadialGradient(mx - R * 0.3, my - R * 0.3, 0, mx, my, R);
+      g.addColorStop(0, "#f4f6fb"); g.addColorStop(1, "#c9d1e3"); ctx.fillStyle = g; ctx.fillRect(mx - R, my - R, R * 2, R * 2);
+      ctx.fillStyle = S.sky[0]; ctx.globalAlpha = 0.94; ctx.beginPath(); ctx.arc(mx + R * 0.5, my - R * 0.18, R * 0.9, 0, 6.283); ctx.fill();
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+
+    for (const c of clouds) {
+      const x = ((c.x + t * c.speed) % (W + c.w)) - c.w * 0.5;
+      ctx.globalAlpha = c.alpha; ctx.drawImage(c.img, x, c.y, c.w, c.h);
+    }
+    ctx.globalAlpha = 1;
+
+    if (birds.length) {
+      const bx = ((t * 18) % (W * 1.6)) - W * 0.3, by = H * 0.3;
+      ctx.strokeStyle = "rgba(30,36,44,0.75)"; ctx.lineWidth = 1.4; ctx.lineCap = "round";
+      for (const b of birds) {
+        const x = bx + b.dx, y = by + b.dy + Math.sin(t * 0.8 + b.ph) * 4, f = Math.sin(t * 7 + b.ph) * 3 * b.s, s = 6 * b.s;
+        ctx.beginPath(); ctx.moveTo(x - s, y - f); ctx.quadraticCurveTo(x - s * 0.4, y - 2, x, y); ctx.quadraticCurveTo(x + s * 0.4, y - 2, x + s, y - f); ctx.stroke();
+      }
+    }
+
+    // Ridges from far to near: colour runs from the hazy far tone to the dark near tone.
+    const far = hex(S.far), near = hex(S.near), mist = S.mist;
+    ridges.forEach((r, i) => {
+      const k = i / (ridges.length - 1), col = lerp(far, near, Math.pow(k, 0.8));
+      const top = lerp(col, lerp(far, mist, 0.4), 0.25 * (1 - k));
+      drawRidge(r, col, top, mist, (S.fog ? 0.55 : 0.22) * (1 - k * 0.7));
+    });
+
+    if (S.fog) {
+      for (let i = 0; i < 5; i++) {
+        const y = H * (0.45 + i * 0.11), off = Math.sin(t * 0.06 + i * 1.3) * W * 0.1;
+        const g = ctx.createLinearGradient(0, y - H * 0.1, 0, y + H * 0.1);
+        g.addColorStop(0, rgb(mist, 0)); g.addColorStop(0.5, rgb(mist, 0.42 - i * 0.05)); g.addColorStop(1, rgb(mist, 0));
+        ctx.fillStyle = g; ctx.fillRect(off - W * 0.15, y - H * 0.1, W * 1.3, H * 0.2);
+      }
+    }
+
+    if (S.rain) {
+      ctx.lineCap = "round";
+      for (const d of drops) {
+        const y = (d.y + t * d.v * (0.6 + d.z * 0.6)) % (H + 50) - 25, x = d.x - y * 0.2 - W * 0.15;
+        ctx.strokeStyle = `rgba(210,222,236,${0.12 + d.z * 0.3})`; ctx.lineWidth = 0.5 + d.z;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - d.l * 0.2, y + d.l * (0.6 + d.z * 0.5)); ctx.stroke();
+      }
+    }
+
+    if (S.lightning && !reduce) {
+      if (t > nextFlash) { flash = 1; nextFlash = t + 4 + Math.random() * 6; boltSeed = 1 + Math.floor(Math.random() * 1e6); }
+      if (flash > 0.02) { ctx.fillStyle = `rgba(214,224,255,${0.3 * flash})`; ctx.fillRect(0, 0, W, H); drawBolt(flash); flash *= 0.86; }
+    }
+
+    // Scrim behind the text: darker at the top and bottom, clear in the middle.
+    const v = ctx.createLinearGradient(0, 0, 0, H);
+    v.addColorStop(0, "rgba(0,0,0,0.30)"); v.addColorStop(0.42, "rgba(0,0,0,0)"); v.addColorStop(0.8, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.35)");
+    ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  function drawBolt(a) {
+    let s2 = boltSeed; const r = () => ((s2 = (s2 * 48271) % 2147483647) / 2147483647);
+    let x = W * (0.25 + r() * 0.5), y = H * 0.08;
+    ctx.strokeStyle = `rgba(246,248,255,${a})`; ctx.lineWidth = 2; ctx.shadowColor = "rgba(190,205,255,0.9)"; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.moveTo(x, y);
+    while (y < H * 0.6) { x += (r() - 0.5) * W * 0.05; y += H * (0.03 + r() * 0.04); ctx.lineTo(x, y); }
+    ctx.stroke(); ctx.shadowBlur = 0;
+  }
+
+  function setScene(key) {
+    S = SCENES[key];
+    for (const b of document.querySelectorAll("#picker button")) b.setAttribute("aria-pressed", String(b.dataset.k === key));
+    document.getElementById("temp").textContent = S.temp + "°";
+    document.getElementById("cond").textContent = S.cond;
+    document.getElementById("hilo").textContent = `מקס׳ ${S.hi}° · מינ׳ ${S.lo}°`;
+    document.getElementById("hum").textContent = S.hum + "%";
+    document.getElementById("wind").textContent = S.wind + " קמ״ש";
+    document.getElementById("time").textContent = S.time;
+    nextFlash = (performance.now() - t0) / 1000 + 1;
+    build();
+    if (reduce) frame(performance.now());
+  }
+
+  const picker = document.getElementById("picker");
+  for (const [k, s] of Object.entries(SCENES)) {
+    const b = document.createElement("button"); b.type = "button"; b.dataset.k = k; b.textContent = s.label;
+    b.addEventListener("click", () => setScene(k)); picker.appendChild(b);
+  }
+  new ResizeObserver(resize).observe(canvas);
+  resize(); setScene("sunny");
+  if (!reduce) requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
