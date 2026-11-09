@@ -59,6 +59,13 @@ fun IdleSettings() {
         }
         Text(stringResource(R.string.idle_screensaver_help), style = MaterialTheme.typography.bodySmall)
 
+        var autoStart by remember { mutableStateOf(settings.idleAutoStart) }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.idle_auto_start), modifier = Modifier.weight(1f))
+            Switch(checked = autoStart, onCheckedChange = { autoStart = it; settings.idleAutoStart = it })
+        }
+        Text(stringResource(R.string.idle_auto_start_help), style = MaterialTheme.typography.bodySmall)
+
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.idle_hebrew_date), modifier = Modifier.weight(1f))
             Switch(checked = hebrew, onCheckedChange = { hebrew = it; settings.idleHebrewDate = it })

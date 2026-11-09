@@ -162,6 +162,8 @@
     <string name="idle_open">Open idle screen</string>
     <string name="idle_screensaver_settings">Screen saver settings</string>
     <string name="idle_screensaver_help">In the screen saver settings choose \"Bayit Voice clock\" and when to start it (for example while charging).</string>
+    <string name="idle_auto_start">Open automatically while charging</string>
+    <string name="idle_auto_start_help">For phones whose system has no screen saver (Realme, Oppo and others). Opens when the charger is connected, and again if the screen times out while charging; closes when unplugged. Needs listening (wake word or satellite) to be on.</string>
     <string name="idle_hebrew_date">Show the Hebrew date</string>
     <string name="idle_night_start">Night starts</string>
     <string name="idle_night_end">Night ends</string>

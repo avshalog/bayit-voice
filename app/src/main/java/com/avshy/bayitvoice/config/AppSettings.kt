@@ -181,6 +181,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_IDLE_NIGHT_SCREEN_OFF, false)
         set(value) = prefs.edit { putBoolean(KEY_IDLE_NIGHT_SCREEN_OFF, value) }
 
+    /** Idle screen: open it by itself while charging (for systems without Android's screen saver). */
+    var idleAutoStart: Boolean
+        get() = prefs.getBoolean(KEY_IDLE_AUTO_START, false)
+        set(value) = prefs.edit { putBoolean(KEY_IDLE_AUTO_START, value) }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -253,6 +258,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_IDLE_HEBREW_DATE = "idle_hebrew_date"
         private const val KEY_IDLE_DAY_BRIGHTNESS = "idle_day_brightness"
         private const val KEY_IDLE_NIGHT_SCREEN_OFF = "idle_night_screen_off"
+        private const val KEY_IDLE_AUTO_START = "idle_auto_start"
         private const val LEGACY_KEY_URL = "server_url"
         private const val LEGACY_SECRETS_FILE = "secrets"
 

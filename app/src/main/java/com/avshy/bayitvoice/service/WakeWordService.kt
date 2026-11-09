@@ -100,6 +100,7 @@ class WakeWordService : Service() {
 
     override fun onDestroy() {
         getSystemService(AudioManager::class.java).unregisterAudioRecordingCallback(recordingCallback)
+        idleAutoStart.unregister()
         // Wait (at most one 80 ms frame) for capture to stop before freeing the native models.
         runBlocking { listening?.cancelAndJoin() }
         SatelliteDevice.get(this).stop()
@@ -266,9 +267,12 @@ class WakeWordService : Service() {
         }
     }
 
+    private val idleAutoStart by lazy { IdleAutoStart(this) }
+
     override fun onCreate() {
         super.onCreate()
         getSystemService(AudioManager::class.java).registerAudioRecordingCallback(recordingCallback, null)
+        idleAutoStart.register()
     }
 
     /** Debug builds: log CPU share, memory and how often the heavy models run. */

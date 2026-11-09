@@ -37,6 +37,7 @@ object SessionLauncher {
     private const val MAIN_ACTIVITY = "com.avshy.bayitvoice.ui.MainActivity"
     private const val START_LISTENING_ACTIVITY = "com.avshy.bayitvoice.ui.StartListeningActivity"
     private const val TIMER_ACTIVITY = "com.avshy.bayitvoice.ui.timer.TimerActivity"
+    private const val IDLE_ACTIVITY = "com.avshy.bayitvoice.ui.idle.IdleActivity"
 
     /**
      * Opens the session UI after a wake word. Android only lets a background app start an
@@ -67,6 +68,23 @@ object SessionLauncher {
         }
         notify(context, Notifications.ID_TIMER, intent, R.string.notification_timer_title, R.string.timer_stop, fullScreen = true)
     }
+
+    /**
+     * Opens the idle screen on its own (charger connected, or the screen timed out while
+     * charging). Needs "display over other apps"; without it nothing happens, since an
+     * idle screen is not worth a notification.
+     */
+    fun openIdle(context: Context) {
+        if (!Settings.canDrawOverlays(context)) return
+        context.startActivity(
+            activityIntent(context, IDLE_ACTIVITY)
+                .putExtra(EXTRA_AUTO_STARTED, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+
+    /** Set on an idle screen opened by [openIdle]: it wakes the screen and closes when unplugged. */
+    const val EXTRA_AUTO_STARTED = "auto_started"
 
     /** After boot: start listening directly if allowed, otherwise ask the user with a notification. */
     fun startListeningAfterBoot(context: Context) {

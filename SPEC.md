@@ -343,7 +343,13 @@ A device fixed in the home always shows the app's own display, so it needs no se
 
 - **Hosts.** The same Compose content runs in two places:
   - the system **screen saver** (a `DreamService`), shown while the device charges or is docked, once the user picks the app under Settings → Display → Screen saver;
-  - an **idle-screen Activity** the user opens from settings, shown over the lock screen and kept on while charging, for devices whose system has no screen saver.
+  - an **idle-screen Activity**, shown over the lock screen and kept on while charging. The user opens it from settings, or turns on "Open automatically while charging". That setting is the main path on systems that remove Android's screen saver (Realme, Oppo / ColorOS and others):
+    - the listening service (wake word or satellite) registers a receiver, with no UI code, for the charger and screen-off broadcasts;
+    - it opens the idle screen when the charger is connected;
+    - it opens it again, waking the screen, if the screen turns off while charging while another app was in front (the screen timed out);
+    - if the idle screen itself was in front, the user turned the screen off on purpose, and it stays off;
+    - an idle screen opened this way closes itself when the charger is removed.
+    It uses the same "display over other apps" permission as the session UI, and only works while the listening service runs.
   The session UI, announcements and a ringing timer open over it as today. When they close, the idle screen is still there underneath (Activity), or the system starts the screen saver again (Dream).
 - **Layout** (designed first for a 6.5" phone in landscape, about 20:9; it also works in portrait and on tablets). The weather scene fills the screen inside a thin black frame with rounded corners. Everything else sits on the scene, sized to be read from 2–3 m:
   - the clock, about half the screen height, in the system's 12/24-hour format;
@@ -358,14 +364,14 @@ A device fixed in the home always shows the app's own display, so it needs no se
 - **Night mode.** Between hours set in settings (default 23:00–06:00), only the clock shows, dim red on black, with no animation. Or, by a setting, the screen is off: nothing is drawn and the backlight is off. The wake word, a ringing timer or an announcement still turns the screen on, since their screens open over the idle screen. In every mode the content shifts by a few pixels each minute so a static screen does not burn in.
 - **Screen and brightness.** The Activity keeps the screen on while the device charges; the screen saver is kept on by the system. By day the backlight follows the system (auto-brightness included), or a fixed level from settings. At night it drops to the minimum, or off. It moves between the day and night levels over about 3 minutes. All of this sets only the idle screen's own window: the system's brightness setting is never changed, so no permission to change system settings is needed.
 - **Resources.** Animation runs only while the idle screen is visible, at about 30 fps. Scene geometry and gradients are built once per size and condition, with no allocations per frame, and drawing stops in night mode. The background service is unchanged: it loads no idle-screen code (section 7).
-- **Settings** ("Idle screen" section): weather entity, media player, night hours, at night dim clock or screen off, fixed day brightness (off = follow the system), Hebrew date, a button to open the idle screen, and a shortcut to the system screen-saver settings.
+- **Settings** ("Idle screen" section): open automatically while charging, weather entity, media player, night hours, at night dim clock or screen off, fixed day brightness (off = follow the system), Hebrew date, a button to open the idle screen, and a shortcut to the system screen-saver settings.
 - **Stages,** each checked on a device before the next:
   1. Hosts, clock, dates, night mode and burn-in shift, on a plain background.
   2. The weather scene engine and weather data, with the forecast high and low.
   3. Timer chip and music.
 - **Acceptance:**
   - The clock and the timer are readable from 3 m on a 6.5" phone.
-  - The screen saver starts by itself on the charger.
+  - The idle screen starts by itself on the charger: as the screen saver where the system has one, and through automatic opening on Realme-type systems.
   - A conversation opened by wake word over the idle screen returns to it afterwards.
   - The scene matches HA's current weather, and day or night.
   - Music started in the room appears within 2 s, and its controls work.
