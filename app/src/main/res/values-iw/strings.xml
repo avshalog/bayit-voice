@@ -165,7 +165,8 @@
     <string name="idle_weather_entity">ישות מזג אוויר</string>
     <string name="idle_weather_hint">weather.home</string>
     <string name="idle_weather_help">ישות מזג האוויר של HA שתוצג (בחיבור לוויין). כדי להציג מקסימום ומינימום להיום, הפעילו ב-HA למכשיר הזה את \"Allow the device to perform Home Assistant actions\" (הגדרות › מכשירים ושירותים › ESPHome › הגדר).</string>
-    <string name="idle_high_low">מקס׳ %1$d° · מינ׳ %2$d°</string>
+    <!-- Each number with its degree sign is isolated left-to-right (U+2066 … U+2069), so the sign stays after it. -->
+    <string name="idle_high_low">מקס׳ ⁦%1$d°⁩ · מינ׳ ⁦%2$d°⁩</string>
     <string name="idle_humidity">לחות</string>
     <string name="idle_wind">רוח</string>
     <string name="idle_unit_kmh">קמ״ש</string>
