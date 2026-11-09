@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -110,18 +111,22 @@ private fun Ringing(timer: ActiveTimer, onStop: () -> Unit) {
         initialValue = 0.45f, targetValue = 1f,
         animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "pulse",
     )
+    // A phone on its side has about 360 dp of height: the same layout, with a smaller ring and less spacing.
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+    val compact = maxHeight < 560.dp
+    val ring = if (compact) (maxHeight * 0.28f).coerceIn(72.dp, 180.dp) else 180.dp
     Column(
-        Modifier.fillMaxSize().safeDrawingPadding().padding(24.dp),
+        Modifier.fillMaxSize().padding(if (compact) 16.dp else 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
         Box(
-            Modifier.size(180.dp).alpha(pulse).border(4.dp, Accent, CircleShape),
+            Modifier.size(ring).alpha(pulse).border(4.dp, Accent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Accent, modifier = Modifier.size(40.dp))
+            Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Accent, modifier = Modifier.size(ring * 0.22f))
         }
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(if (compact) 14.dp else 28.dp))
         Text(
             TimerText.name(res, timer),
             color = Color(TimerColors.TITLE), fontSize = 30.sp, fontWeight = FontWeight.Medium,
@@ -136,11 +141,12 @@ private fun Ringing(timer: ActiveTimer, onStop: () -> Unit) {
         Button(
             onClick = onStop,
             colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Color(TimerColors.ON_ACCENT)),
-            modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).height(64.dp),
+            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().height(if (compact) 56.dp else 64.dp),
         ) { Text(stringResource(R.string.timer_stop), fontSize = 20.sp, fontWeight = FontWeight.Medium) }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(if (compact) 8.dp else 12.dp))
         Text(stringResource(R.string.timer_stop_hint), color = Color(TimerColors.MUTED), fontSize = 14.sp)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(if (compact) 4.dp else 16.dp))
+    }
     }
 }
 
