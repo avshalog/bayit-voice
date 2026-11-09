@@ -82,6 +82,22 @@ fun IdleSettings() {
         )
         Text(stringResource(R.string.idle_weather_help), style = MaterialTheme.typography.bodySmall)
 
+        var mediaPlayer by remember { mutableStateOf(settings.idleMediaPlayer.orEmpty()) }
+        OutlinedTextField(
+            value = mediaPlayer,
+            onValueChange = { value ->
+                mediaPlayer = value.trim()
+                settings.idleMediaPlayer = mediaPlayer.takeIf { it.startsWith("media_player.") && it.length > 13 }
+            },
+            label = { Text(stringResource(R.string.idle_media_player)) },
+            placeholder = { Text(stringResource(R.string.idle_media_player_hint)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(stringResource(R.string.idle_media_player_help), style = MaterialTheme.typography.bodySmall)
+
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.idle_hebrew_date), modifier = Modifier.weight(1f))
             Switch(checked = hebrew, onCheckedChange = { hebrew = it; settings.idleHebrewDate = it })

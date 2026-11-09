@@ -28,20 +28,26 @@ class HaLink(private val send: (ApiMessage) -> Boolean) {
     /** Latest values HA sent for the subscribed keys. Empty while HA is not connected. */
     val states: StateFlow<Map<Key, String>> = _states.asStateFlow()
 
-    @Volatile private var wanted: Set<Key> = emptySet()
+    private val wantedBy = ConcurrentHashMap<String, Set<Key>>()
+    private val wanted: Set<Key> get() = wantedBy.values.flatten().toSet()
     @Volatile private var subscribed: Set<Key> = emptySet()
     @Volatile private var haAsked = false
 
     private val nextCallId = AtomicInteger(1)
     private val pending = ConcurrentHashMap<Int, CompletableDeferred<ActionResponse>>()
 
-    /** The keys the app wants; new ones are requested at once if HA is connected. */
-    fun want(keys: Set<Key>) {
-        wanted = keys
+    /**
+     * The keys [owner] wants (weather, music, ...), replacing what it wanted before; new ones are
+     * requested at once if HA is connected. HA cannot unsubscribe, so dropped keys stay until it reconnects.
+     */
+    @Synchronized
+    fun want(owner: String, keys: Set<Key>) {
+        wantedBy[owner] = keys
         if (haAsked) sendSubscriptions()
     }
 
     /** HA asked for the subscriptions (`SubscribeHomeAssistantStatesRequest`). */
+    @Synchronized
     fun onStatesRequested() {
         haAsked = true
         subscribed = emptySet()
@@ -81,6 +87,13 @@ class HaLink(private val send: (ApiMessage) -> Boolean) {
         }
         return withTimeoutOrNull(timeoutMs) { result.await() }.also { pending.remove(id) }
     }
+
+    /**
+     * Runs `domain.service` in HA without waiting for an answer, for actions that return nothing
+     * (asking for a response from those makes HA refuse them). False when HA is not connected.
+     */
+    fun fire(service: String, data: Map<String, String>): Boolean =
+        haAsked && send(Outgoing.action(service, data, callId = 0, wantsResponse = false))
 
     private fun sendSubscriptions() {
         val toSend = wanted - subscribed

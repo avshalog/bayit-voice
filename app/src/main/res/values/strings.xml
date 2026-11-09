@@ -167,6 +167,14 @@
     <string name="idle_hebrew_date">Show the Hebrew date</string>
     <string name="idle_weather_entity">Weather entity</string>
     <string name="idle_weather_hint">weather.home</string>
+    <string name="idle_media_player">Room media player</string>
+    <string name="idle_media_player_hint">media_player.living_room</string>
+    <string name="idle_media_player_help">While it plays, the idle screen shows what is playing with play/pause, next and volume. The controls need the same \"Allow the device to perform Home Assistant actions\" option. Album art needs the HA address in the direct-mode settings.</string>
+    <string name="idle_music_art">Album art</string>
+    <string name="idle_music_play">Play</string>
+    <string name="idle_music_pause">Pause</string>
+    <string name="idle_music_next">Next</string>
+    <string name="idle_music_volume">Volume</string>
     <string name="idle_weather_help">The HA weather entity to show (satellite link). For today\'s high and low, turn on \"Allow the device to perform Home Assistant actions\" for this device in HA (Settings › Devices and services › ESPHome › Configure).</string>
     <string name="idle_high_low">High %1$d° · Low %2$d°</string>
     <string name="idle_humidity">Humidity</string>

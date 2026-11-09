@@ -18,6 +18,8 @@ import android.widget.TextView
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.timer.ActiveTimer
 import com.avshy.bayitvoice.timer.TimerAlarms
+import com.avshy.bayitvoice.service.IdleVisibility
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -43,7 +45,9 @@ class TimerOverlayService : Service() {
             return START_NOT_STICKY
         }
         if (watching == null) watching = scope.launch {
-            TimerAlarms.get(this@TimerOverlayService).timers.collect(::render)
+            // The idle screen shows its own timer chip; this one steps aside while it is in front.
+            combine(TimerAlarms.get(this@TimerOverlayService).timers, IdleVisibility.showing) { timers, idle -> timers to idle }
+                .collect { (timers, idle) -> render(timers, idle) }
         }
         return START_NOT_STICKY
     }
@@ -54,14 +58,14 @@ class TimerOverlayService : Service() {
         super.onDestroy()
     }
 
-    private fun render(timers: List<ActiveTimer>) {
+    private fun render(timers: List<ActiveTimer>, idleShowing: Boolean) {
         if (timers.isEmpty()) {
             stopSelf()
             return
         }
         // A ringing timer has its own screen; the chip shows the next one still running.
         val running = timers.filterNot { it.ringing }.sortedBy { it.leftMs() }
-        if (running.isEmpty()) {
+        if (running.isEmpty() || idleShowing) {
             chip?.remove()
             chip = null
             ticking?.cancel()

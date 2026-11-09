@@ -164,6 +164,14 @@
     <string name="idle_hebrew_date">הצג תאריך עברי</string>
     <string name="idle_weather_entity">ישות מזג אוויר</string>
     <string name="idle_weather_hint">weather.home</string>
+    <string name="idle_media_player">נגן המדיה של החדר</string>
+    <string name="idle_media_player_hint">media_player.living_room</string>
+    <string name="idle_media_player_help">כשהוא מנגן, מסך ההמתנה מראה מה מתנגן, עם נגן/השהה, הבא ועוצמה. הכפתורים צריכים את אותה האפשרות \"Allow the device to perform Home Assistant actions\". עטיפת האלבום צריכה את כתובת HA בהגדרות החיבור הישיר.</string>
+    <string name="idle_music_art">עטיפת האלבום</string>
+    <string name="idle_music_play">נגן</string>
+    <string name="idle_music_pause">השהה</string>
+    <string name="idle_music_next">הבא</string>
+    <string name="idle_music_volume">עוצמה</string>
     <string name="idle_weather_help">ישות מזג האוויר של HA שתוצג (בחיבור לוויין). כדי להציג מקסימום ומינימום להיום, הפעילו ב-HA למכשיר הזה את \"Allow the device to perform Home Assistant actions\" (הגדרות › מכשירים ושירותים › ESPHome › הגדר).</string>
     <!-- Each number with its degree sign is isolated left-to-right (U+2066 … U+2069), so the sign stays after it. -->
     <string name="idle_high_low">מקס׳ ⁦%1$d°⁩ · מינ׳ ⁦%2$d°⁩</string>

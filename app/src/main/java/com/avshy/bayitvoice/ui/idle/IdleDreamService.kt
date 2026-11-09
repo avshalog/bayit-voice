@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.service.dreams.DreamService
+import com.avshy.bayitvoice.service.IdleVisibility
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.AssistLink
 import androidx.compose.ui.platform.ComposeView
@@ -58,9 +59,11 @@ class IdleDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner
         super.onDreamingStarted()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        IdleVisibility.onShown()
     }
 
     override fun onDreamingStopped() {
+        IdleVisibility.onHidden()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onDreamingStopped()

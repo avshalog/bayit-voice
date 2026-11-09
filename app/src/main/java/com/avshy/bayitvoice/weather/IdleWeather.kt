@@ -68,6 +68,7 @@ class IdleWeather(context: Context) {
     suspend fun run() {
         val entity = entityId ?: return
         ha.want(
+            "weather",
             setOf(
                 Key(entity), Key(entity, "temperature"), Key(entity, "temperature_unit"),
                 Key(entity, "humidity"), Key(entity, "wind_speed"), Key(entity, "wind_speed_unit"),

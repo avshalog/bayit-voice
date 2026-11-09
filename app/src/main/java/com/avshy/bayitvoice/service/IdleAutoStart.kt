@@ -9,6 +9,9 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.AssistLink
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Opens the idle screen by itself while the device charges (SPEC section 11), for systems such
@@ -60,19 +63,22 @@ class IdleAutoStart(private val context: Context) {
  * so the service can read it.
  */
 object IdleVisibility {
-    @Volatile private var showing = false
+    private val _showing = MutableStateFlow(false)
     @Volatile private var hiddenAtMs = 0L
 
-    fun onShown() { showing = true }
+    /** True while the idle screen is in front. It shows its own timer chip, so the overlay chip hides. */
+    val showing: StateFlow<Boolean> = _showing.asStateFlow()
+
+    fun onShown() { _showing.value = true }
 
     fun onHidden() {
-        showing = false
+        _showing.value = false
         hiddenAtMs = SystemClock.elapsedRealtime()
     }
 
     /** True if it is in front, or was until a moment ago (the screen-off broadcast can come after the Activity stops). */
     fun wasShowingRecently(): Boolean =
-        showing || SystemClock.elapsedRealtime() - hiddenAtMs < RECENT_MS
+        _showing.value || SystemClock.elapsedRealtime() - hiddenAtMs < RECENT_MS
 
     private const val RECENT_MS = 2_000L
 }
