@@ -343,7 +343,7 @@ Registers the app in HA as a real voice satellite, so HA's built-in timers, anno
 HA's timers are durations only and live in HA's memory, so a wake-up alarm or a reminder at a set time is kept on the device itself; HA only sets, lists and cancels them.
 
 - **Kinds.** Both are one-time, at a time of day (the next time that clock time comes), with no repeat rules. Each request adds a new one, and several of each can be set.
-  - *Alarm*: rings with the timer's ringing screen and sound, with "Stop" and "Snooze" (9 minutes).
+  - *Alarm*: rings with the timer's ringing screen and sound, with "Stop" and "Snooze" (10 minutes).
   - *Reminder*: has a text. At its time it rings like an alarm and shows the text, with "Done" and "Remind me in 10 minutes".
 - **Nothing shows before the time.** Alarms and reminders have no chip on the idle screen, the overlay or the night clock; only the ringing screen at their time.
 - **How HA reaches the device.** The device lists user-defined actions in the ESPHome API (`ListEntitiesServicesResponse`, id 41; HA runs them with `ExecuteServiceRequest`, id 42, and the device answers with `ExecuteServiceResponse`, id 131). HA registers them as `esphome.<device name>_<action>`; this needs no "Allow actions" option. Actions:

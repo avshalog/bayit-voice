@@ -113,7 +113,7 @@ class TimerActivity : ComponentActivity() {
 }
 
 private val Accent = Color(TimerColors.ACCENT)
-private const val SNOOZE_MINUTES = 9
+private const val SNOOZE_MINUTES = 10
 private const val REMIND_LATER_MINUTES = 10
 
 @Composable
