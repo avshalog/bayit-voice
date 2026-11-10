@@ -17,6 +17,9 @@ object MessageType {
     const val DEVICE_INFO_RESPONSE = 10
     const val LIST_ENTITIES_REQUEST = 11
     const val LIST_ENTITIES_DONE_RESPONSE = 19
+    const val LIST_ENTITIES_SERVICES_RESPONSE = 41
+    const val EXECUTE_SERVICE_REQUEST = 42
+    const val EXECUTE_SERVICE_RESPONSE = 131
     const val SUBSCRIBE_HOMEASSISTANT_SERVICES_REQUEST = 34
     const val HOMEASSISTANT_ACTION_REQUEST = 35
     const val SUBSCRIBE_HOME_ASSISTANT_STATES_REQUEST = 38
@@ -178,6 +181,40 @@ data class HomeAssistantState(val entityId: String, val state: String, val attri
     }
 }
 
+/** `ServiceArgType` for user-defined actions. */
+object ServiceArgType {
+    const val INT = 1
+    const val STRING = 3
+}
+
+/** `SupportsResponseType` for user-defined actions. */
+object SupportsResponse {
+    const val NONE = 0
+    const val OPTIONAL = 1
+    const val ONLY = 2
+}
+
+/** One argument of an [ExecuteService] call, as sent by HA; read it by the declared type. */
+class ServiceArg(private val fields: List<ProtoField>) {
+    val string: String get() = fields.firstOrNull { it.field == 4 }?.string.orEmpty()
+    val int: Int get() = fields.firstOrNull { it.field == 5 }?.sint ?: fields.firstOrNull { it.field == 2 }?.int ?: 0
+}
+
+/**
+ * `ExecuteServiceRequest`: HA runs one of this device's user-defined actions. A non-zero
+ * [callId] wants an `ExecuteServiceResponse`; [returnResponse] wants its JSON data too.
+ */
+data class ExecuteService(val key: Int, val args: List<ServiceArg>, val callId: Int, val returnResponse: Boolean) {
+    companion object {
+        fun parse(m: ApiMessage) = ExecuteService(
+            key = m.fields.firstOrNull { it.field == 1 }?.number?.toInt() ?: 0,
+            args = m.fields.filter { it.field == 2 }.map { ServiceArg(ProtoReader.fields(it.bytes ?: ByteArray(0))) },
+            callId = m.fields.firstOrNull { it.field == 3 }?.int ?: 0,
+            returnResponse = m.fields.firstOrNull { it.field == 4 }?.bool ?: false,
+        )
+    }
+}
+
 /** `HomeassistantActionResponse`: the result of an action this device asked HA to run. */
 data class ActionResponse(val callId: Int, val success: Boolean, val error: String, val responseJson: String) {
     companion object {
@@ -261,6 +298,34 @@ object Outgoing {
             uint32(6, callId)
             bool(7, wantsResponse)
         }.toByteArray(),
+    )
+
+    /** Fires an HA event (its name must start with "esphome."); HA adds the device id to [data]. */
+    fun event(name: String, data: Map<String, String>) = ApiMessage(
+        MessageType.HOMEASSISTANT_ACTION_REQUEST,
+        ProtoWriter().apply {
+            string(1, name)
+            for ((key, value) in data) message(2, ProtoWriter().string(1, key).string(2, value))
+            bool(5, true) // is_event
+        }.toByteArray(),
+    )
+
+    /** Lists one user-defined action; HA registers it as `esphome.<device name>_<name>`. */
+    fun listService(name: String, key: Int, args: List<Pair<String, Int>>, supportsResponse: Int) = ApiMessage(
+        MessageType.LIST_ENTITIES_SERVICES_RESPONSE,
+        ProtoWriter().apply {
+            string(1, name)
+            fixed32(2, key)
+            for ((argName, type) in args) message(3, ProtoWriter().string(1, argName).uint32(2, type))
+            uint32(4, supportsResponse)
+        }.toByteArray(),
+    )
+
+    /** Answers an [ExecuteService] call; [json] is sent only when HA asked for the response data. */
+    fun executeServiceResponse(callId: Int, success: Boolean, error: String?, json: String?) = ApiMessage(
+        MessageType.EXECUTE_SERVICE_RESPONSE,
+        ProtoWriter().uint32(1, callId).bool(2, success).string(3, error)
+            .bytes(4, json?.toByteArray(Charsets.UTF_8)).toByteArray(),
     )
 
     /** Wake words as (id, phrase); [active] are ids. */

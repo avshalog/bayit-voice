@@ -8,6 +8,7 @@ import com.avshy.bayitvoice.satellite.proto.ActionResponse
 import com.avshy.bayitvoice.satellite.proto.AnnounceRequest
 import com.avshy.bayitvoice.satellite.proto.HomeAssistantState
 import com.avshy.bayitvoice.satellite.proto.ApiMessage
+import com.avshy.bayitvoice.satellite.proto.ExecuteService
 import com.avshy.bayitvoice.satellite.proto.HelloRequest
 import com.avshy.bayitvoice.satellite.proto.MessageType
 import com.avshy.bayitvoice.satellite.proto.Outgoing
@@ -67,6 +68,9 @@ class SatelliteDevice private constructor(private val context: Context) {
     /** HA states and actions for the idle screen (SPEC section 11). */
     val ha = HaLink(::send)
 
+    /** Alarms and reminders HA sets on this device (SPEC section 10.1). */
+    private val alarmActions = AlarmActions(context, ::send)
+
     val name: String get() = "bayit-voice-" + settings.satelliteMac.takeLast(6)
 
     val friendlyName: String get() = settings.deviceName ?: Build.MODEL
@@ -117,7 +121,11 @@ class SatelliteDevice private constructor(private val context: Context) {
                         VoiceFeature.TIMERS or VoiceFeature.ANNOUNCE or VoiceFeature.START_CONVERSATION,
                 ),
             )
-            MessageType.LIST_ENTITIES_REQUEST -> send(Outgoing.empty(MessageType.LIST_ENTITIES_DONE_RESPONSE))
+            MessageType.LIST_ENTITIES_REQUEST -> {
+                alarmActions.listMessages().forEach(::send)
+                send(Outgoing.empty(MessageType.LIST_ENTITIES_DONE_RESPONSE))
+            }
+            MessageType.EXECUTE_SERVICE_REQUEST -> alarmActions.execute(ExecuteService.parse(message))
             MessageType.PING_REQUEST -> send(Outgoing.empty(MessageType.PING_RESPONSE))
             MessageType.DISCONNECT_REQUEST -> {
                 send(Outgoing.empty(MessageType.DISCONNECT_RESPONSE))
@@ -149,6 +157,9 @@ class SatelliteDevice private constructor(private val context: Context) {
             else -> Log.d(TAG, "Ignoring message type ${message.type}")
         }
     }
+
+    /** Fires an HA event from this device; HA adds the device id. Needs "Allow actions" in HA. */
+    fun fireEvent(name: String, data: Map<String, String>): Boolean = send(Outgoing.event(name, data))
 
     /** Tells HA which wake words exist and which is active; also call after a local change. */
     fun sendConfiguration() {

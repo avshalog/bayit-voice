@@ -19,7 +19,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** A timer HA set on this device. [endsAt] is in `SystemClock.elapsedRealtime()` time. */
+/** What rings: an HA timer, or one of this device's alarms or reminders (SPEC section 10.1). */
+enum class RingKind { TIMER, ALARM, REMINDER }
+
+/**
+ * A timer HA set on this device, or an alarm or reminder while it rings. [endsAt] is in
+ * `SystemClock.elapsedRealtime()` time. For an alarm or reminder, [name] is its label or text and
+ * [clock] its time of day.
+ */
 data class ActiveTimer(
     val id: String,
     val name: String,
@@ -28,6 +35,8 @@ data class ActiveTimer(
     /** Set while paused: what was left when it paused. */
     val pausedLeftMs: Long? = null,
     val ringing: Boolean = false,
+    val kind: RingKind = RingKind.TIMER,
+    val clock: String? = null,
 ) {
     fun leftMs(now: Long = SystemClock.elapsedRealtime()): Long = pausedLeftMs ?: (endsAt - now).coerceAtLeast(0)
 }
@@ -109,6 +118,43 @@ class TimerAlarms private constructor(private val context: Context) {
         SessionLauncher.openTimer(context)
     }
 
+    /** Rings one of this device's alarms (until stopped) or reminders (a short chime). */
+    @Synchronized
+    fun ringAlarm(alarm: DeviceAlarm) {
+        val kind = if (alarm.kind == AlarmKind.ALARM) RingKind.ALARM else RingKind.REMINDER
+        val id = "alarm-${alarm.id}-${alarm.atMs}"
+        Log.i(TAG, "${kind.name.lowercase()} #${alarm.id} at ${alarm.clock} is due")
+        val entry = ActiveTimer(id, alarm.text, 0, SystemClock.elapsedRealtime(), ringing = true, kind = kind, clock = alarm.clock)
+        _timers.update { list -> list.filterNot { it.id == id } + entry }
+        val scope = scope ?: return
+        if (kind == RingKind.ALARM) {
+            sound?.cancel()
+            sound = scope.launch {
+                AlarmSound.play(MAX_ALARM_RING_MS)
+                stopRinging()
+            }
+        } else {
+            if (sound?.isActive != true) scope.launch { AlarmSound.play(REMINDER_CHIME_MS) }
+            // A reminder does not keep ringing; its screen closes by itself after a while.
+            countdowns[id] = scope.launch {
+                delay(MAX_ALARM_RING_MS)
+                remove(id)
+            }
+        }
+        SessionLauncher.openTimer(context)
+    }
+
+    /** Snooze or "remind me later": what rings now comes back in [minutes] as a new one. */
+    @Synchronized
+    fun snoozeRinging(minutes: Int) {
+        val alarms = DeviceAlarms.get(context)
+        val at = System.currentTimeMillis() + minutes * 60_000L
+        for (t in _timers.value.filter { it.ringing && it.kind != RingKind.TIMER }) {
+            alarms.add(if (t.kind == RingKind.ALARM) AlarmKind.ALARM else AlarmKind.REMINDER, at, t.name)
+        }
+        stopRinging()
+    }
+
     /** Stops the sound and clears every ringing timer. */
     @Synchronized
     fun stopRinging() {
@@ -146,6 +192,10 @@ class TimerAlarms private constructor(private val context: Context) {
         /** A ringing timer stops by itself after this long. */
         private const val MAX_RING_MS = 5 * 60_000L
         private const val MAX_DONE = 32
+
+        /** An alarm stops by itself after this long, and a reminder's screen closes. */
+        private const val MAX_ALARM_RING_MS = 10 * 60_000L
+        private const val REMINDER_CHIME_MS = 2_500L
 
         @Volatile private var instance: TimerAlarms? = null
 

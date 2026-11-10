@@ -196,6 +196,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getString(KEY_IDLE_MEDIA_PLAYER, null)?.takeIf { it.startsWith("media_player.") }
         set(value) = prefs.edit { putString(KEY_IDLE_MEDIA_PLAYER, value?.trim()?.lowercase()) }
 
+    /** Satellite alarms and reminders (SPEC section 10.1), as the JSON array DeviceAlarms writes. */
+    var deviceAlarmsJson: String?
+        get() = prefs.getString(KEY_DEVICE_ALARMS, null)
+        set(value) = prefs.edit { putString(KEY_DEVICE_ALARMS, value) }
+
     /** HA version from the last successful `auth_ok`. */
     var lastHaVersion: String?
         get() = prefs.getString(KEY_HA_VERSION, null)
@@ -271,6 +276,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_IDLE_AUTO_START = "idle_auto_start"
         private const val KEY_IDLE_WEATHER = "idle_weather_entity"
         private const val KEY_IDLE_MEDIA_PLAYER = "idle_media_player"
+        private const val KEY_DEVICE_ALARMS = "device_alarms"
         private const val LEGACY_KEY_URL = "server_url"
         private const val LEGACY_SECRETS_FILE = "secrets"
 

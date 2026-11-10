@@ -57,6 +57,7 @@ import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.music.IdleMusic
 import com.avshy.bayitvoice.music.NowPlaying
 import com.avshy.bayitvoice.timer.ActiveTimer
+import com.avshy.bayitvoice.timer.RingKind
 import com.avshy.bayitvoice.ui.timer.TimerText
 import kotlinx.coroutines.delay
 
@@ -71,7 +72,7 @@ internal fun Modifier.glass(shape: Shape): Modifier =
 /** The next running timer as one row: icon, name, time left. Nothing when no timer runs. */
 @Composable
 internal fun TimerChip(timers: List<ActiveTimer>, u: Dp, modifier: Modifier = Modifier) {
-    val next = timers.filterNot { it.ringing }.minByOrNull { it.leftMs() } ?: return
+    val next = timers.filter { it.kind == RingKind.TIMER && !it.ringing }.minByOrNull { it.leftMs() } ?: return
     val left by produceState(next.leftMs(), next) {
         while (true) {
             value = next.leftMs()

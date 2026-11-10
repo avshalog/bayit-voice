@@ -15,6 +15,12 @@ class ProtoWriter {
         varint(value.toLong() and 0xFFFFFFFFL)
     }
 
+    /** A fixed32 field, written even when zero (ESPHome's `force` option on entity keys). */
+    fun fixed32(field: Int, value: Int): ProtoWriter = apply {
+        tag(field, WIRE_FIXED32)
+        for (i in 0 until 4) out.write((value ushr (8 * i)) and 0xFF)
+    }
+
     fun bool(field: Int, value: Boolean): ProtoWriter = apply {
         if (!value) return@apply
         tag(field, WIRE_VARINT)
@@ -66,6 +72,9 @@ class ProtoField(val field: Int, val wireType: Int, val number: Long, val bytes:
     val bool: Boolean get() = number != 0L
     val string: String get() = bytes?.toString(Charsets.UTF_8).orEmpty()
     val float: Float get() = Float.fromBits(number.toInt())
+
+    /** A `sint32` (zigzag-encoded varint). */
+    val sint: Int get() = ((number ushr 1) xor -(number and 1)).toInt()
 }
 
 /** A minimal protobuf decoder: walks the fields of a message, skipping none. */

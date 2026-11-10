@@ -207,8 +207,12 @@
     <string name="timer_stop">עצור</string>
     <string name="timer_cancel">בטל טיימר</string>
     <string name="timer_close">סגור</string>
+    <string name="alarm_default_name">שעון מעורר</string>
+    <string name="alarm_snooze">נודניק %1$d דק׳</string>
+    <string name="reminder_subtitle">תזכורת · %1$s</string>
+    <string name="reminder_later">הזכר בעוד %1$d דק׳</string>
+    <string name="reminder_done">סיום</string>
     <string name="timer_stop_hint">או אמור את מילת ההפעלה</string>
-    <string name="timer_more">+%1$d</string>
     <string name="notification_timer_title">הטיימר הסתיים</string>
     <plurals name="duration_hours"><item quantity="one">שעה</item><item quantity="two">שעתיים</item><item quantity="other">%d שעות</item></plurals>
     <plurals name="duration_minutes"><item quantity="one">דקה</item><item quantity="two">2 דקות</item><item quantity="other">%d דקות</item></plurals>

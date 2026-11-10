@@ -55,6 +55,9 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.timer.ActiveTimer
+import com.avshy.bayitvoice.timer.RingKind
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.platform.LocalDensity
 import com.avshy.bayitvoice.timer.TimerAlarms
 import kotlinx.coroutines.delay
 
@@ -77,13 +80,20 @@ class TimerActivity : ComponentActivity() {
             val timers by alarms.timers.collectAsStateWithLifecycle()
             LaunchedEffect(timers.isEmpty()) { if (timers.isEmpty()) finish() }
             val ringing = timers.firstOrNull { it.ringing }
-            val running = timers.minByOrNull { it.leftMs() }
+            val running = timers.filter { it.kind == RingKind.TIMER }.minByOrNull { it.leftMs() }
             Box(Modifier.fillMaxSize().background(Color(TimerColors.BACKGROUND))) {
                 when {
-                    ringing != null -> Ringing(ringing, onStop = {
-                        alarms.stopRinging()
-                        finish()
-                    })
+                    ringing != null -> Ringing(
+                        ringing,
+                        onStop = {
+                            alarms.stopRinging()
+                            finish()
+                        },
+                        onLater = { minutes ->
+                            alarms.snoozeRinging(minutes)
+                            finish()
+                        },
+                    )
                     running != null -> Running(running, onCancel = { alarms.dismiss(running.id) }, onClose = ::finish)
                 }
             }
@@ -103,9 +113,11 @@ class TimerActivity : ComponentActivity() {
 }
 
 private val Accent = Color(TimerColors.ACCENT)
+private const val SNOOZE_MINUTES = 9
+private const val REMIND_LATER_MINUTES = 10
 
 @Composable
-private fun Ringing(timer: ActiveTimer, onStop: () -> Unit) {
+private fun Ringing(timer: ActiveTimer, onStop: () -> Unit, onLater: (Int) -> Unit) {
     val res = LocalContext.current.resources
     val pulse by rememberInfiniteTransition(label = "ring").animateFloat(
         initialValue = 0.45f, targetValue = 1f,
@@ -124,27 +136,64 @@ private fun Ringing(timer: ActiveTimer, onStop: () -> Unit) {
             Modifier.size(ring).alpha(pulse).border(4.dp, Accent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Accent, modifier = Modifier.size(ring * 0.22f))
+            when (timer.kind) {
+                RingKind.TIMER -> Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Accent, modifier = Modifier.size(ring * 0.22f))
+                RingKind.ALARM -> Text("⏰", fontSize = with(LocalDensity.current) { (ring * 0.3f).toSp() })
+                RingKind.REMINDER -> Text("🔔", fontSize = with(LocalDensity.current) { (ring * 0.3f).toSp() })
+            }
         }
         Spacer(Modifier.height(if (compact) 14.dp else 28.dp))
         Text(
-            TimerText.name(res, timer),
+            when (timer.kind) {
+                RingKind.TIMER -> TimerText.name(res, timer)
+                RingKind.ALARM -> timer.name.ifBlank { stringResource(R.string.alarm_default_name) }
+                RingKind.REMINDER -> timer.name
+            },
             color = Color(TimerColors.TITLE), fontSize = 30.sp, fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center, maxLines = 3,
             style = androidx.compose.ui.text.TextStyle(textDirection = TextDirection.Content),
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            stringResource(R.string.timer_finished_text, TimerText.duration(res, timer.totalSeconds)),
+            when (timer.kind) {
+                RingKind.TIMER -> stringResource(R.string.timer_finished_text, TimerText.duration(res, timer.totalSeconds))
+                RingKind.ALARM -> timer.clock.orEmpty()
+                RingKind.REMINDER -> stringResource(R.string.reminder_subtitle, timer.clock.orEmpty())
+            },
             color = Color(TimerColors.MUTED), fontSize = 18.sp, textAlign = TextAlign.Center,
         )
         Spacer(Modifier.weight(1f))
-        Button(
-            onClick = onStop,
-            colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Color(TimerColors.ON_ACCENT)),
-            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().height(if (compact) 56.dp else 64.dp),
-        ) { Text(stringResource(R.string.timer_stop), fontSize = 20.sp, fontWeight = FontWeight.Medium) }
+        val height = if (compact) 56.dp else 64.dp
+        Row(
+            Modifier.widthIn(max = 480.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // Alarms snooze and reminders come back later; a timer only stops.
+            val later = when (timer.kind) {
+                RingKind.TIMER -> null
+                RingKind.ALARM -> SNOOZE_MINUTES to stringResource(R.string.alarm_snooze, SNOOZE_MINUTES)
+                RingKind.REMINDER -> REMIND_LATER_MINUTES to stringResource(R.string.reminder_later, REMIND_LATER_MINUTES)
+            }
+            if (later != null) {
+                OutlinedButton(onClick = { onLater(later.first) }, modifier = Modifier.weight(1f).height(height)) {
+                    Text(later.second, fontSize = 18.sp, color = Color(TimerColors.TEXT), textAlign = TextAlign.Center)
+                }
+            }
+            Button(
+                onClick = onStop,
+                colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Color(TimerColors.ON_ACCENT)),
+                modifier = Modifier.weight(1f).height(height),
+            ) {
+                Text(
+                    stringResource(if (timer.kind == RingKind.REMINDER) R.string.reminder_done else R.string.timer_stop),
+                    fontSize = 20.sp, fontWeight = FontWeight.Medium,
+                )
+            }
+        }
         Spacer(Modifier.height(if (compact) 8.dp else 12.dp))
-        Text(stringResource(R.string.timer_stop_hint), color = Color(TimerColors.MUTED), fontSize = 14.sp)
+        if (timer.kind != RingKind.REMINDER) {
+            Text(stringResource(R.string.timer_stop_hint), color = Color(TimerColors.MUTED), fontSize = 14.sp)
+        }
         Spacer(Modifier.height(if (compact) 4.dp else 16.dp))
     }
     }

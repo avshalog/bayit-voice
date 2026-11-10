@@ -26,6 +26,7 @@ import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.satellite.SatelliteDevice
+import com.avshy.bayitvoice.timer.DeviceAlarms
 import com.avshy.bayitvoice.timer.TimerAlarms
 import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.ha.ConnectionManager
@@ -168,6 +169,10 @@ class WakeWordService : Service() {
             satellite.start(scope)
             satellite.sendConfiguration()
             TimerAlarms.get(this).start(scope)
+            DeviceAlarms.get(this).apply {
+                onReminder = { satellite.fireEvent(REMINDER_EVENT, mapOf("text" to it.text, "time" to it.clock)) }
+                start(scope)
+            }
         } else {
             satellite.stop()
             if (settings.connectionMode == ConnectionMode.KeepConnected && settings.isConfigured) {
@@ -298,6 +303,9 @@ class WakeWordService : Service() {
 
     companion object {
         private const val TAG = "WakeWordService"
+
+        /** Fired when a reminder is due, so a home automation can speak it (SPEC section 10.1). */
+        private const val REMINDER_EVENT = "esphome.bayit_reminder"
         private const val ACTION_STOP = "stop"
         private const val ACTION_RELOAD = "reload"
         private const val ACTION_DEBUG_DETECT = "debug_detect"

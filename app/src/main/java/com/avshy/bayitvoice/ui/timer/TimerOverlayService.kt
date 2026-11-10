@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.timer.ActiveTimer
+import com.avshy.bayitvoice.timer.RingKind
 import com.avshy.bayitvoice.timer.TimerAlarms
 import com.avshy.bayitvoice.service.IdleVisibility
 import kotlinx.coroutines.flow.combine
@@ -64,7 +65,8 @@ class TimerOverlayService : Service() {
             return
         }
         // A ringing timer has its own screen; the chip shows the next one still running.
-        val running = timers.filterNot { it.ringing }.sortedBy { it.leftMs() }
+        // Only HA timers, and only the nearest; alarms and reminders show only when they ring.
+        val running = timers.filter { it.kind == RingKind.TIMER && !it.ringing }.sortedBy { it.leftMs() }
         if (running.isEmpty() || idleShowing) {
             chip?.remove()
             chip = null
@@ -86,7 +88,6 @@ class TimerOverlayService : Service() {
         private val windows = getSystemService(WindowManager::class.java)
         private val name = text(13f, TimerColors.TEXT)
         private val time = text(15f, TimerColors.TEXT).apply { typeface = Typeface.DEFAULT_BOLD }
-        private val more = text(13f, TimerColors.MUTED)
         private val root = LinearLayout(this@TimerOverlayService).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -99,7 +100,7 @@ class TimerOverlayService : Service() {
                 setImageResource(R.drawable.ic_timer)
                 imageTintList = ColorStateList.valueOf(TimerColors.ACCENT)
             }, LinearLayout.LayoutParams(dp(18), dp(18)))
-            listOf(name, time, more).forEach {
+            listOf(name, time).forEach {
                 addView(it, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(10) })
             }
             setOnClickListener {
@@ -112,8 +113,6 @@ class TimerOverlayService : Service() {
             val first = running.first()
             name.text = TimerText.name(resources, first)
             time.text = TimerText.countdown(first.leftMs())
-            more.visibility = if (running.size > 1) View.VISIBLE else View.GONE
-            more.text = getString(R.string.timer_more, running.size - 1)
             if (added) return
             val params = WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,

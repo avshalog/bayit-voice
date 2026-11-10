@@ -209,8 +209,12 @@
     <string name="timer_stop">Stop</string>
     <string name="timer_cancel">Cancel timer</string>
     <string name="timer_close">Close</string>
+    <string name="alarm_default_name">Alarm</string>
+    <string name="alarm_snooze">Snooze %1$d min</string>
+    <string name="reminder_subtitle">Reminder · %1$s</string>
+    <string name="reminder_later">Remind me in %1$d min</string>
+    <string name="reminder_done">Done</string>
     <string name="timer_stop_hint">Or say the wake word</string>
-    <string name="timer_more">+%1$d</string>
     <string name="notification_timer_title">Timer finished</string>
     <plurals name="duration_hours"><item quantity="one">1 hour</item><item quantity="other">%d hours</item></plurals>
     <plurals name="duration_minutes"><item quantity="one">1 minute</item><item quantity="other">%d minutes</item></plurals>
