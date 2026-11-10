@@ -59,9 +59,24 @@ data class WakeDetection(
     val noiseFloorRms: Double,
 )
 
-/** Decides, with the other devices, whether this one answers; null means it does, else the winner's name. */
-fun interface Arbitration {
-    suspend fun winnerElsewhere(commandSnrDb: Float?): String?
+/** Another device that heard the same wake word. */
+data class Peer(val id: Long, val name: String, val satellite: Boolean)
+
+/**
+ * What the devices decided: [winner] answers (null: this device does). When this phone answers
+ * over a satellite, [satelliteRunnerUp] is that satellite, to hand a timer command to.
+ */
+data class ArbitrationResult(val winner: Peer?, val satelliteRunnerUp: Peer?)
+
+/** Decides, with the other devices, which one answers a wake word (SPEC section 6.2). */
+interface Arbitration {
+    suspend fun decide(commandSnrDb: Float?): ArbitrationResult
+
+    /** This phone answered over [to], a satellite, but the command is one only it can run. */
+    suspend fun handOff(to: Peer)
+
+    /** A satellite that lost to a phone: waits up to [timeoutMs] for that phone to hand the command over. */
+    suspend fun awaitHandOff(timeoutMs: Long): Boolean
 }
 
 /** How a whole conversation ended. */

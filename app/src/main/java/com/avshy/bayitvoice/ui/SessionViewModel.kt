@@ -3,6 +3,7 @@ package com.avshy.bayitvoice.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.avshy.bayitvoice.R
 import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.audio.MicArbiter
 import com.avshy.bayitvoice.config.AppSettings
@@ -34,6 +35,7 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
     private val session = AssistSession(
         settings, connections, SatelliteDevice.get(app),
         onAlarmRequest = { PhoneAlarms.handle(app, it) },
+        handOffKeywords = app.resources.getStringArray(R.array.hand_off_keywords).toList(),
     )
 
     val state: StateFlow<SessionState> = session.state

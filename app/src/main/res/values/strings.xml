@@ -220,4 +220,12 @@
     <plurals name="duration_hours"><item quantity="one">1 hour</item><item quantity="other">%d hours</item></plurals>
     <plurals name="duration_minutes"><item quantity="one">1 minute</item><item quantity="other">%d minutes</item></plurals>
     <plurals name="duration_seconds"><item quantity="one">1 second</item><item quantity="other">%d seconds</item></plurals>
+    <!-- A phone that answered a wake word over a satellite hands commands with these words to it
+         (only a satellite has HA timers). Matched in what STT heard, in any language, so one list. -->
+    <string-array name="hand_off_keywords" translatable="false">
+        <item>timer</item>
+        <item>stopwatch</item>
+        <item>טיימר</item>
+        <item>סטופר</item>
+    </string-array>
 </resources>

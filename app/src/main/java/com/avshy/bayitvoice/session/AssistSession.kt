@@ -56,6 +56,11 @@ class AssistSession(
      * the request's event data and returns the answer's. Null: requests are not followed.
      */
     private val onAlarmRequest: ((JSONObject) -> JSONObject)? = null,
+    /**
+     * Words of a command only a satellite can run (a timer). A phone that answered a wake word
+     * over a satellite hands such a command to it (SPEC section 6.2). Empty: never hand over.
+     */
+    private val handOffKeywords: List<String> = emptyList(),
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -195,27 +200,18 @@ class AssistSession(
 
         var answeredElsewhere: String? = null
         var spokeBeforeVerdict = false
+        // A satellite this phone beat; a timer command is handed back to it (SPEC section 6.2).
+        var handOffTo: Peer? = null
         val finished = coroutineScope {
             // Recording starts now, so nothing said meanwhile is lost; audio is buffered until HA
             // is ready, and HA hears nothing at all if another device wins the arbitration.
             val streamer = AudioStreamer(this, measure = arbitration != null)
-            try {
-                if (arbitration != null && detection != null) {
-                    val verdict = arbitrate(streamer, detection, arbitration)
-                    spokeBeforeVerdict = verdict.spoke
-                    answeredElsewhere = verdict.winner
-                    if (answeredElsewhere != null) {
-                        streamer.end()
-                        return@coroutineScope true
-                    }
-                }
-                // An alarm asked for in this turn reaches this phone as an HA event (needs an admin token).
-                val alarmSub = onAlarmRequest?.let {
-                    runCatching { client.send("subscribe_events", JSONObject().put("event_type", PhoneAlarms.REQUEST_EVENT)) }.getOrNull()
-                }
-                val runId = client.send("assist_pipeline/run", request)
-                Log.i(TAG, "Pipeline run $runId started")
-                withTimeoutOrNull(RUN_TIMEOUT_MS) {
+
+            /** Follows one pipeline run to its end; false on timeout. */
+            suspend fun follow(runRequest: JSONObject, alarmSub: Int?): Boolean {
+                val runId = client.send("assist_pipeline/run", runRequest)
+                Log.i(TAG, "Pipeline run $runId started (${runRequest.optString("start_stage")} to ${runRequest.optString("end_stage")})")
+                return withTimeoutOrNull(RUN_TIMEOUT_MS) {
                     client.awaitResult(runId)
                     var timer: Job? = null
                     while (true) {
@@ -229,13 +225,16 @@ class AssistSession(
                         val data = event.optJSONObject("data") ?: JSONObject()
                         when (event.optString("type")) {
                             "run-start" -> {
-                                val handler = data.getJSONObject("runner_data").getInt("stt_binary_handler_id")
-                                streamer.start(WebSocketSink(handler.toByte()))
-                                val silenceLimit = if (handsFree) HANDS_FREE_SILENCE_MS else MANUAL_SILENCE_MS
-                                timer = launch {
-                                    delay(silenceLimit)
-                                    heardNoSpeech = true
-                                    streamer.end()
+                                // Only a run that starts with speech has an audio handler.
+                                val handler = data.optJSONObject("runner_data")?.optInt("stt_binary_handler_id", -1) ?: -1
+                                if (handler >= 0) {
+                                    streamer.start(WebSocketSink(handler.toByte()))
+                                    val silenceLimit = if (handsFree) HANDS_FREE_SILENCE_MS else MANUAL_SILENCE_MS
+                                    timer = launch {
+                                        delay(silenceLimit)
+                                        heardNoSpeech = true
+                                        streamer.end()
+                                    }
                                 }
                             }
                             "stt-vad-start" -> {
@@ -277,11 +276,49 @@ class AssistSession(
                         }
                     }
                     timer?.cancel()
-                    alarmSub?.let { id ->
-                        runCatching { client.send("unsubscribe_events", JSONObject().put("subscription", id)) }
-                    }
                     true
                 } ?: false
+            }
+
+            try {
+                if (arbitration != null && detection != null) {
+                    val verdict = arbitrate(streamer, detection, arbitration)
+                    spokeBeforeVerdict = verdict.spoke
+                    answeredElsewhere = verdict.result.winner?.name
+                    if (answeredElsewhere != null) {
+                        streamer.end()
+                        return@coroutineScope true
+                    }
+                    if (handOffKeywords.isNotEmpty()) handOffTo = verdict.result.satelliteRunnerUp
+                }
+                // An alarm asked for in this turn reaches this phone as an HA event (needs an admin token).
+                val alarmSub = onAlarmRequest?.let {
+                    runCatching { client.send("subscribe_events", JSONObject().put("event_type", PhoneAlarms.REQUEST_EVENT)) }.getOrNull()
+                }
+                try {
+                    val target = handOffTo
+                    if (target == null) return@coroutineScope follow(request, alarmSub)
+                    // A satellite heard it too: transcribe first, and if it is a timer, let the
+                    // satellite run it (only it has HA timers); otherwise go on from the text here.
+                    if (!follow(JSONObject(request.toString()).put("end_stage", "stt"), alarmSub)) return@coroutineScope false
+                    val text = _state.value.userText
+                    if (errorCode != null || text.isBlank()) return@coroutineScope true
+                    if (isHandOff(text)) {
+                        Log.i(TAG, "A timer command; handing it to ${target.name}")
+                        arbitration!!.handOff(target)
+                        answeredElsewhere = target.name
+                        return@coroutineScope true
+                    }
+                    val fromText = JSONObject()
+                        .put("start_stage", "intent")
+                        .put("end_stage", "tts")
+                        .put("input", JSONObject().put("text", text))
+                    pipelineId?.let { fromText.put("pipeline", it) }
+                    conversationId?.let { fromText.put("conversation_id", it) }
+                    follow(fromText, alarmSub)
+                } finally {
+                    alarmSub?.let { id -> runCatching { client.send("unsubscribe_events", JSONObject().put("subscription", id)) } }
+                }
             } finally {
                 streamer.end()
             }
@@ -289,7 +326,7 @@ class AssistSession(
 
         answeredElsewhere?.let { name ->
             // Keep showing "listening" until the user is done, so they don't stop or start over.
-            waitForEndOfSpeech(spokeBeforeVerdict)
+            if (handOffTo == null) waitForEndOfSpeech(spokeBeforeVerdict)
             return TurnOutcome.Yielded(name)
         }
         if (!finished) return TurnOutcome.Failed(SessionError.Timeout)
@@ -320,13 +357,15 @@ class AssistSession(
         }.onFailure { Log.w(TAG, "Could not answer the alarm request: ${it.javaClass.simpleName}") }
     }
 
-    private class Verdict(val winner: String?, val spoke: Boolean)
+    private class Verdict(val result: ArbitrationResult, val spoke: Boolean)
+
+    private fun isHandOff(text: String): Boolean = handOffKeywords.any { text.contains(it, ignoreCase = true) }
 
     /** Every device decides at the same moment after its own detection; null winner = this one answers. */
     private suspend fun arbitrate(streamer: AudioStreamer, detection: WakeDetection, arbitration: Arbitration): Verdict {
         delay((detection.detectedAtMs + DECIDE_AFTER_MS - SystemClock.elapsedRealtime()).coerceAtLeast(0))
         val commandSnr = streamer.finishMeasuring(detection.noiseFloorRms)
-        return Verdict(arbitration.winnerElsewhere(commandSnr), (commandSnr ?: 0f) >= SPEECH_SNR_DB)
+        return Verdict(arbitration.decide(commandSnr), (commandSnr ?: 0f) >= SPEECH_SNR_DB)
     }
 
     /**
@@ -351,6 +390,7 @@ class AssistSession(
         var notSent = false
         var answeredElsewhere: String? = null
         var spokeBeforeVerdict = false
+        var waitedForSpeech = false
         // True from our start request until HA reports the run's end (or an error).
         var runOpen = false
 
@@ -368,8 +408,24 @@ class AssistSession(
                 if (arbitration != null && detection != null) {
                     val verdict = arbitrate(streamer, detection, arbitration)
                     spokeBeforeVerdict = verdict.spoke
-                    answeredElsewhere = verdict.winner
-                    if (answeredElsewhere != null) return@coroutineScope true
+                    val winner = verdict.result.winner
+                    if (winner != null) {
+                        var handedOver = false
+                        if (!winner.satellite) {
+                            // A phone answers, but may hand back a command only this satellite can
+                            // run (a timer): keep recording until the user is done, then wait for it.
+                            streamer.awaitEndOfSpeech(verdict.spoke, MAX_ELSEWHERE_LISTEN_MS)
+                            streamer.stopRecording()
+                            waitedForSpeech = true
+                            handedOver = arbitration.awaitHandOff(HAND_OFF_WAIT_MS)
+                        }
+                        if (!handedOver) {
+                            answeredElsewhere = winner.name
+                            return@coroutineScope true
+                        }
+                        Log.i(TAG, "${winner.name} handed the command over; sending what was recorded")
+                        _state.update { it.copy(phase = SessionPhase.Thinking) }
+                    }
                 }
                 if (!device.send(Outgoing.voiceAssistantRequest(start = true, conversationId = conversationId))) {
                     notSent = true
@@ -454,7 +510,7 @@ class AssistSession(
         }
 
         answeredElsewhere?.let { name ->
-            waitForEndOfSpeech(spokeBeforeVerdict)
+            if (!waitedForSpeech) waitForEndOfSpeech(spokeBeforeVerdict)
             return TurnOutcome.Yielded(name)
         }
         if (notSent) return TurnOutcome.Failed(SessionError.SatelliteNotConnected)
@@ -533,12 +589,16 @@ class AssistSession(
         private var sumSquares = 0.0
         private var samples = 0L
 
+        /** Sees each chunk as it is recorded, e.g. to notice the end of speech. */
+        @Volatile private var onAudio: ((ByteArray, Int) -> Unit)? = null
+
         private val recorder = scope.launch {
             try {
                 mic.record { buffer, length ->
                     chunks.trySend(buffer.copyOf(length))
                     MicLevel.update(buffer, length)
                     if (measuring) accumulate(buffer, length)
+                    onAudio?.invoke(buffer, length)
                 }
             } finally {
                 MicLevel.reset()
@@ -577,6 +637,34 @@ class AssistSession(
             if (samples == 0L) return null
             val rms = sqrt(sumSquares / samples)
             (20 * log10(rms / max(noiseFloorRms, 1.0))).toFloat()
+        }
+
+        /** Stops the mic but keeps what was recorded, for a sink started later. */
+        fun stopRecording() {
+            recorder.cancel()
+        }
+
+        /**
+         * Returns once the user stops speaking (as [waitForEndOfSpeech], but on this recording, so
+         * the audio is kept), or after [maxMs].
+         */
+        suspend fun awaitEndOfSpeech(spokeAlready: Boolean, maxMs: Long) {
+            val done = CompletableDeferred<Unit>()
+            val vad = EnergyVad()
+            var heardSpeech = spokeAlready
+            var silentMs = 0
+            onAudio = { buffer, length ->
+                val frame = ShortArray(length / 2) { i -> ((buffer[2 * i].toInt() and 0xFF) or (buffer[2 * i + 1].toInt() shl 8)).toShort() }
+                if (vad.isVoice(frame)) {
+                    heardSpeech = true
+                    silentMs = 0
+                } else {
+                    silentMs += frame.size * 1000 / MicRecorder.SAMPLE_RATE
+                }
+                if (silentMs >= if (heardSpeech) END_SILENCE_MS else NO_SPEECH_MS) done.complete(Unit)
+            }
+            withTimeoutOrNull(maxMs) { done.await() }
+            onAudio = null
         }
 
         /** Stops the mic; the sender drains buffered audio and sends end-of-audio. */
@@ -636,5 +724,8 @@ class AssistSession(
         private const val END_SILENCE_MS = 800
         private const val NO_SPEECH_MS = 1_200
         private const val MAX_ELSEWHERE_LISTEN_MS = 10_000L
+
+        /** A satellite that lost to a phone waits this long after the command for the phone to hand it over. */
+        private const val HAND_OFF_WAIT_MS = 4_000L
     }
 }

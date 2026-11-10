@@ -6,7 +6,10 @@ import android.os.SystemClock
 import android.provider.Settings
 import kotlinx.coroutines.delay
 import com.avshy.bayitvoice.config.AppSettings
+import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.session.Arbitration
+import com.avshy.bayitvoice.session.ArbitrationResult
+import com.avshy.bayitvoice.session.Peer
 import com.avshy.bayitvoice.session.WakeDetection
 
 /**
@@ -23,10 +26,31 @@ class SessionArbitration private constructor(
     private val app = context.applicationContext
     private val arbiter = PeerArbiter(app)
 
-    override suspend fun winnerElsewhere(commandSnrDb: Float?): String? {
-        val claim = Claim(settings.deviceId, deviceName(app), proximity(detection, commandSnrDb), System.currentTimeMillis())
-        return arbiter.claim(groupKey, claim, PeerArbiter.DEFAULT_WINDOW_MS)?.deviceName
+    /** The device that won this wake word, once decided; null while undecided or when this one won. */
+    private var winner: Peer? = null
+
+    override suspend fun decide(commandSnrDb: Float?): ArbitrationResult {
+        val mine = Claim(
+            settings.deviceId, deviceName(app), proximity(detection, commandSnrDb), System.currentTimeMillis(),
+            satellite = settings.assistLink == AssistLink.Satellite,
+        )
+        val outcome = arbiter.claim(groupKey, mine, PeerArbiter.DEFAULT_WINDOW_MS)
+        winner = outcome.winner?.toPeer()
+        // A phone that won over a satellite may hand it a command only it can run.
+        val runnerUp = if (outcome.winner == null && !mine.satellite) {
+            outcome.peers.filter { it.satellite }.reduceOrNull { a, b -> if (a.beats(b)) a else b }?.toPeer()
+        } else null
+        return ArbitrationResult(winner, runnerUp)
     }
+
+    override suspend fun handOff(to: Peer) = arbiter.handOff(groupKey, settings.deviceId, to.id)
+
+    override suspend fun awaitHandOff(timeoutMs: Long): Boolean {
+        val from = winner ?: return false
+        return arbiter.awaitHandOff(groupKey, settings.deviceId, from.id, timeoutMs)
+    }
+
+    private fun Claim.toPeer() = Peer(deviceId, deviceName, satellite)
 
     companion object {
         /** dB of proximity per unit of detection confidence: 0.5 → 1.0 confidence adds 5 dB. */

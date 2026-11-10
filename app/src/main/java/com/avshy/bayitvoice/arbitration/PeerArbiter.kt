@@ -21,74 +21,113 @@ import kotlin.math.min
  * Each device multicasts its claim on the local network for a short window, repeating it so a
  * device that detected a little later still hears it, and listens for the others' claims. All
  * devices compare the same claims the same way, so exactly one of them wins.
+ *
+ * A phone that won over a satellite can also hand the command to it afterwards ([handOff]), for
+ * one only a satellite can run, such as a timer; the satellite waits for that ([awaitHandOff]).
  */
 class PeerArbiter(context: Context) {
 
     private val app = context.applicationContext
 
+    /** The claims heard, and the one that beat this device's (null: this device answers). */
+    class Outcome(val winner: Claim?, val peers: List<Claim>)
+
     /**
-     * Returns the claim that beat this device's, or null when this device should answer: it had
+     * Exchanges claims for [windowMs]. The winner is null when this device should answer: it had
      * the best claim, or nobody else answered, or the network gave no way to ask. Never throws.
      */
-    suspend fun claim(groupKey: ByteArray, mine: Claim, windowMs: Long): Claim? = withContext(Dispatchers.IO) {
-        val nif = wifiInterface() ?: run {
-            Log.i(TAG, "No Wi-Fi interface for arbitration; handling the wake word alone")
-            return@withContext null
-        }
-        val lock = app.getSystemService(WifiManager::class.java)
-            .createMulticastLock(TAG).apply { setReferenceCounted(false) }
+    suspend fun claim(groupKey: ByteArray, mine: Claim, windowMs: Long): Outcome {
         val peers = LinkedHashMap<Long, Claim>()
-        try {
-            lock.acquire()
-            MulticastSocket(PORT).use { socket ->
-                socket.networkInterface = nif
-                socket.timeToLive = 1
-                val group = InetAddress.getByName(GROUP)
-                socket.joinGroup(InetSocketAddress(group, PORT), nif)
-                val out = mine.encode(groupKey)
-                val outPacket = DatagramPacket(out, out.size, group, PORT)
-                val buffer = ByteArray(Claim.MAX_PACKET_BYTES)
-                val inPacket = DatagramPacket(buffer, buffer.size)
-
-                val start = SystemClock.elapsedRealtime()
-                val end = start + windowMs
-                var nextSend = start
-                while (true) {
-                    val now = SystemClock.elapsedRealtime()
-                    if (now >= nextSend) {
-                        runCatching { socket.send(outPacket) }
-                        nextSend += RESEND_MS
-                    }
-                    if (now >= end) break
-                    socket.soTimeout = (min(nextSend, end) - now).coerceAtLeast(1).toInt()
-                    try {
-                        inPacket.length = buffer.size
-                        socket.receive(inPacket)
-                        val claim = Claim.decode(buffer, inPacket.length, groupKey) ?: continue
-                        if (claim.deviceId == mine.deviceId) continue // our own packet, looped back
-                        if (abs(System.currentTimeMillis() - claim.timestampMs) > MAX_AGE_MS) continue
-                        peers[claim.deviceId] = claim
-                    } catch (_: SocketTimeoutException) {
-                    }
-                }
-                // One last copy, for a device whose window is still open.
-                runCatching { socket.send(outPacket) }
+        val ok = exchange(mine.encode(groupKey), windowMs) { buffer, length ->
+            val claim = Claim.decode(buffer, length, groupKey) ?: return@exchange false
+            if (claim.deviceId != mine.deviceId && abs(System.currentTimeMillis() - claim.timestampMs) <= MAX_AGE_MS) {
+                peers[claim.deviceId] = claim
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "Arbitration failed (${e.javaClass.simpleName}: ${e.message}); handling the wake word alone")
-            return@withContext null
-        } finally {
-            if (lock.isHeld) lock.release()
+            false
         }
-
+        if (!ok) return Outcome(null, emptyList())
         val winner = peers.values.filter { it.beats(mine) }.reduceOrNull { a, b -> if (a.beats(b)) a else b }
-        Log.i(TAG, "Arbitration: mine %.1f vs %s -> %s".format(
-            mine.score,
-            if (peers.isEmpty()) "no peers" else peers.values.joinToString { "%s %.1f".format(it.deviceName, it.score) },
+        Log.i(TAG, "Arbitration: mine %.1f%s vs %s -> %s".format(
+            mine.score, if (mine.satellite) " (satellite)" else "",
+            if (peers.isEmpty()) "no peers" else peers.values.joinToString { "%s %.1f%s".format(it.deviceName, it.score, if (it.satellite) " (satellite)" else "") },
             if (winner == null) "handle it" else "${winner.deviceName} handles it",
         ))
-        winner
+        return Outcome(winner, peers.values.toList())
     }
+
+    /** Tells device [toId] to run the command itself, repeating the message for a short window. */
+    suspend fun handOff(groupKey: ByteArray, fromId: Long, toId: Long) {
+        Log.i(TAG, "Handing the command to device $toId")
+        exchange(HandOff(fromId, toId, System.currentTimeMillis()).encode(groupKey), HAND_OFF_SEND_MS) { _, _ -> false }
+    }
+
+    /** True if device [fromId] handed the command to [myId] within [timeoutMs]. */
+    suspend fun awaitHandOff(groupKey: ByteArray, myId: Long, fromId: Long, timeoutMs: Long): Boolean {
+        var received = false
+        exchange(null, timeoutMs) { buffer, length ->
+            val message = HandOff.decode(buffer, length, groupKey) ?: return@exchange false
+            received = message.toId == myId && message.fromId == fromId &&
+                abs(System.currentTimeMillis() - message.timestampMs) <= MAX_AGE_MS
+            received
+        }
+        Log.i(TAG, if (received) "Device $fromId handed the command over" else "No hand-over from device $fromId")
+        return received
+    }
+
+    /**
+     * Joins the group for [windowMs], sending [out] (if any) every [RESEND_MS] and passing every
+     * packet received to [onPacket], which returns true to stop early. False if the network gave
+     * no way to do it.
+     */
+    private suspend fun exchange(out: ByteArray?, windowMs: Long, onPacket: (ByteArray, Int) -> Boolean): Boolean =
+        withContext(Dispatchers.IO) {
+            val nif = wifiInterface() ?: run {
+                Log.i(TAG, "No Wi-Fi interface for arbitration; handling the wake word alone")
+                return@withContext false
+            }
+            val lock = app.getSystemService(WifiManager::class.java)
+                .createMulticastLock(TAG).apply { setReferenceCounted(false) }
+            try {
+                lock.acquire()
+                MulticastSocket(PORT).use { socket ->
+                    socket.networkInterface = nif
+                    socket.timeToLive = 1
+                    val group = InetAddress.getByName(GROUP)
+                    socket.joinGroup(InetSocketAddress(group, PORT), nif)
+                    val outPacket = out?.let { DatagramPacket(it, it.size, group, PORT) }
+                    val buffer = ByteArray(MAX_PACKET_BYTES)
+                    val inPacket = DatagramPacket(buffer, buffer.size)
+
+                    val start = SystemClock.elapsedRealtime()
+                    val end = start + windowMs
+                    var nextSend = start
+                    while (true) {
+                        val now = SystemClock.elapsedRealtime()
+                        if (outPacket != null && now >= nextSend) {
+                            runCatching { socket.send(outPacket) }
+                            nextSend += RESEND_MS
+                        }
+                        if (now >= end) break
+                        val wakeAt = if (outPacket != null) min(nextSend, end) else end
+                        socket.soTimeout = (wakeAt - now).coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
+                        try {
+                            inPacket.length = buffer.size
+                            socket.receive(inPacket)
+                            if (onPacket(buffer, inPacket.length)) break
+                        } catch (_: SocketTimeoutException) {
+                        }
+                    }
+                    // One last copy, for a device whose window is still open.
+                    if (outPacket != null) runCatching { socket.send(outPacket) }
+                }
+                true
+            } catch (e: Exception) {
+                Log.w(TAG, "Arbitration failed (${e.javaClass.simpleName}: ${e.message}); handling the wake word alone")
+                false
+            } finally {
+                if (lock.isHeld) lock.release()
+            }
+        }
 
     /** The Wi-Fi interface: up, multicast-capable and with a private IPv4 address. */
     private fun wifiInterface(): NetworkInterface? = runCatching {
@@ -108,8 +147,13 @@ class PeerArbiter(context: Context) {
         /** Claims are repeated this often during the window. */
         private const val RESEND_MS = 80L
 
-        /** Older claims belong to an earlier wake word. */
+        /** Older messages belong to an earlier wake word. */
         private const val MAX_AGE_MS = 1_000L
+
+        /** A hand-over is repeated for this long, so a satellite listening on a busy network hears it. */
+        private const val HAND_OFF_SEND_MS = 400L
+
+        private val MAX_PACKET_BYTES = maxOf(Claim.MAX_PACKET_BYTES, HandOff.PACKET_BYTES)
 
         const val DEFAULT_WINDOW_MS = 300L
     }
