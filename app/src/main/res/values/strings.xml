@@ -212,7 +212,7 @@
     <string name="phone_reminder_label">Reminder: %1$s</string>
     <string name="alarm_default_name">Alarm</string>
     <string name="alarm_snooze">Snooze %1$d min</string>
-    <string name="reminder_subtitle">Reminder · %1$s</string>
+    <string name="reminder_title">Reminder</string>
     <string name="reminder_later">Remind me in %1$d min</string>
     <string name="reminder_done">Done</string>
     <string name="timer_stop_hint">Or say the wake word</string>

@@ -210,7 +210,7 @@
     <string name="phone_reminder_label">תזכורת: %1$s</string>
     <string name="alarm_default_name">שעון מעורר</string>
     <string name="alarm_snooze">נודניק %1$d דק׳</string>
-    <string name="reminder_subtitle">תזכורת · %1$s</string>
+    <string name="reminder_title">תזכורת</string>
     <string name="reminder_later">הזכר בעוד %1$d דק׳</string>
     <string name="reminder_done">סיום</string>
     <string name="timer_stop_hint">או אמור את מילת ההפעלה</string>

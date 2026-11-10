@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alert Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600&display=swap">
+<style>
+/* Design mock: the timer, alarm and reminder screens drawn in the language of the full-screen
+   conversation (FullScreenSession.kt): the same 1280×800 / 800×1280 design grid, colours, top bar,
+   orb spot, text area and big pill button. Sizes are design pixels scaled by --k. */
+:root {
+  --page: #101115; --bg: #0B0C10; --raised: #1E2027; --bubble: #22242B;
+  --text: #ECEDF0; --reply: #F5F6F8; --muted: #C9CCD3; --soft: #9EA3AE;
+  --accent: #7FA6FF; --on-accent: #0E1013; --done: #5CCB8A; --line: #2E3038;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font-family: "Heebo", system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 18px; }
+h1 { font-size: 1.4rem; margin: 0; font-weight: 600; }
+.note { color: var(--soft); font-size: 14px; line-height: 1.6; max-width: 900px; margin: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar .gap { width: 12px; }
+.bar button { font: inherit; font-size: 14px; color: var(--text); background: var(--raised); border: 1px solid var(--line);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stage { width: 100%; aspect-ratio: 20 / 9; position: relative; }
+.stage.portrait { aspect-ratio: 9 / 20; width: min(100%, 420px); margin: 0 auto; }
+.device { position: absolute; inset: 0; border-radius: 30px; background: #000; padding: 8px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 22px; overflow: hidden; background: var(--bg); container-type: size;
+  --k: calc(100cqh / 800); }
+.portrait .screen { --k: calc(100cqw / 800); }
+
+/* The accent glow around the orb spot, as in the conversation. */
+.glow { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle calc(var(--k) * 360) at var(--ox) var(--oy), rgba(127,166,255,0.16), transparent 70%); }
+/* The orb spot: on the end side in landscape (left in Hebrew), above the text in portrait; placed by
+   proportion of the screen, as FullScreenSession does. */
+.screen { --ox: calc(100cqw * 300 / 1280); --oy: calc(100cqh * 390 / 800); }
+.portrait .screen { --ox: 50cqw; --oy: calc(100cqh * 380 / 1280); }
+
+.top { position: absolute; inset-inline: 0; top: 0; display: flex; align-items: center; padding: calc(var(--k) * 48); gap: calc(var(--k) * 24); }
+.top .label { flex: 1; color: var(--accent); font-size: calc(var(--k) * 48); line-height: 1.2; font-weight: 600; }
+.top .close { width: calc(var(--k) * 88); height: calc(var(--k) * 88); border-radius: 50%; background: var(--raised); display: grid; place-items: center; }
+.top .close svg { width: 40%; height: 40%; stroke: var(--muted); }
+
+/* The orb, then the alert's icon, both at the orb spot. */
+.spot { position: absolute; left: var(--ox); top: var(--oy); width: calc(var(--k) * 300); height: calc(var(--k) * 300); transform: translate(-50%, -50%); }
+.orb { position: absolute; inset: 0; border-radius: 50%; transition: opacity 500ms ease, transform 500ms ease;
+  background: radial-gradient(circle at 40% 35%, #c9d8ff 0%, #7FA6FF 32%, #3a5bbf 62%, rgba(40,60,140,0) 72%);
+  filter: blur(0.5px); animation: speak 520ms ease-in-out infinite alternate; }
+.orb::after { content: ""; position: absolute; inset: -12%; border-radius: 50%; border: 2px solid rgba(127,166,255,0.35); animation: ripple 1.6s ease-out infinite; }
+@keyframes speak { from { transform: scale(0.92); } to { transform: scale(1.04); } }
+@keyframes ripple { from { transform: scale(0.85); opacity: 0.8; } to { transform: scale(1.25); opacity: 0; } }
+.icon { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: scale(0.6); transition: opacity 450ms ease, transform 450ms cubic-bezier(.2,1.4,.4,1); }
+.icon svg { width: 72%; height: 72%; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.icon .ring { position: absolute; inset: 4%; border-radius: 50%; border: calc(var(--k) * 4) solid var(--accent); opacity: 0.5; animation: halo 1.2s ease-in-out infinite alternate; }
+@keyframes halo { from { opacity: 0.15; transform: scale(0.96); } to { opacity: 0.55; transform: scale(1.04); } }
+.spot.ringing .orb { opacity: 0; transform: scale(0.7); animation: none; }
+.spot.ringing .icon { opacity: 1; transform: scale(1); }
+.spot.ringing .icon svg { animation: wobble 1.2s ease-in-out infinite; transform-origin: 50% 40%; }
+@keyframes wobble { 0%, 60%, 100% { transform: rotate(0); } 10% { transform: rotate(-9deg); } 20% { transform: rotate(8deg); } 30% { transform: rotate(-6deg); } 40% { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .orb, .orb::after, .icon .ring, .spot.ringing .icon svg { animation: none; } }
+
+/* The text area, as in the conversation: the alert's name as the reply, its time under it. */
+.texts { position: absolute; top: calc(100cqh * 150 / 800); bottom: calc(100cqh * 96 / 800); inset-inline-start: calc(100cqw * 72 / 1280);
+  inset-inline-end: calc(100cqw * 590 / 1280); display: flex; flex-direction: column; justify-content: center; gap: calc(var(--k) * 20); }
+.portrait .texts { top: calc(100cqh * 600 / 1280); bottom: calc(100cqh * 330 / 1280); inset-inline: calc(var(--k) * 64); justify-content: flex-start; }
+.reply { color: var(--reply); font-size: calc(var(--k) * 64); line-height: 1.25; font-weight: 600; }
+.sub { color: var(--soft); font-size: calc(var(--k) * 38); line-height: 1.3; direction: rtl; }
+
+/* Buttons: the "speak again" pill, below the icon. */
+.buttons { position: absolute; left: var(--ox); top: calc(var(--oy) + var(--k) * 190); transform: translateX(-50%);
+  display: flex; gap: calc(var(--k) * 20); opacity: 0; transition: opacity 300ms ease 150ms; }
+.portrait .buttons { top: auto; bottom: calc(var(--k) * 110); flex-direction: column; align-items: stretch; width: calc(var(--k) * 560); }
+.spot.ringing ~ .buttons { opacity: 1; }
+.pill { display: inline-flex; align-items: center; justify-content: center; gap: calc(var(--k) * 16); height: calc(var(--k) * 112);
+  padding: 0 calc(var(--k) * 48); border-radius: 999px; font-size: calc(var(--k) * 38); font-weight: 600; white-space: nowrap; }
+.pill svg { width: calc(var(--k) * 44); height: calc(var(--k) * 44); fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.pill.primary { background: var(--accent); color: var(--on-accent); }
+.pill.secondary { background: var(--raised); color: var(--text); }
+.hint { position: absolute; inset-inline: 0; bottom: calc(var(--k) * 40); text-align: center; color: var(--soft); font-size: calc(var(--k) * 28); }
+.portrait .hint { bottom: calc(var(--k) * 48); }
+.stage:not(.portrait) .hint { inset-inline: auto; left: var(--ox); transform: translateX(-50%); white-space: nowrap; top: calc(var(--oy) + var(--k) * 330); bottom: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>מסכי התראה בשפה של העוזר</h1>
+  <div class="bar" role="group" aria-label="בחירה">
+    <button type="button" data-kind="reminder" aria-pressed="true">תזכורת עם הקראה</button>
+    <button type="button" data-kind="alarm" aria-pressed="false">שעון מעורר</button>
+    <button type="button" data-kind="timer" aria-pressed="false">טיימר</button>
+    <span class="gap"></span>
+    <button type="button" data-o="land" aria-pressed="true">לרוחב</button>
+    <button type="button" data-o="port" aria-pressed="false">לאורך</button>
+    <span class="gap"></span>
+    <button type="button" id="replay">הפעל שוב ▶</button>
+  </div>
+  <div class="stage" id="stage">
+    <div class="device"><div class="screen">
+      <div class="glow"></div>
+      <div class="top">
+        <div class="label" id="label">תזכורת</div>
+        <div class="close" aria-label="סגור"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+      </div>
+      <div class="texts">
+        <div class="reply" id="reply">לאסוף את גילי מהחוג</div>
+        <div class="sub" id="sub">17:00</div>
+      </div>
+      <div class="spot" id="spot">
+        <div class="orb"></div>
+        <div class="icon"><div class="ring"></div><svg viewBox="0 0 24 24" id="icon"></svg></div>
+      </div>
+      <div class="buttons" id="buttons"></div>
+      <div class="hint">או אמור את מילת ההפעלה</div>
+    </div></div>
+  </div>
+  <p class="note">לפי מסך השיחה המלא: הכותרת למעלה היא סוג ההתראה, שם ההתראה מופיע באזור השיחה (כמו התשובה של העוזר) והשעה מתחתיו. כשיש הקראה (תזכורת), הכדור "מדבר" בזמן ההקראה ואז מתחלף לאייקון גדול של סוג ההתראה, באותו קו של האייקונים של העוזר (כמו ה-V). בלי הקראה (שעון מעורר, טיימר) האייקון מופיע מיד. הכפתורים הם הכדור-כפתור של "דבר שוב", מתחת לאייקון.</p>
+</div>
+<script>
+(() => {
+  const ICONS = {
+    alarm: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9.5V13l2.5 2"/><path d="M4.5 4.5 2.5 6.5"/><path d="M19.5 4.5l2 2"/>',
+    reminder: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+    timer: '<path d="M7 3h10"/><path d="M7 21h10"/><path d="M8 3c0 4.5 4 5 4 9s-4 4.5-4 9"/><path d="M16 3c0 4.5-4 5-4 9s4 4.5 4 9"/>',
+  };
+  const STOP = '<svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>';
+  const LATER = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+  const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  const KINDS = {
+    reminder: { label: "תזכורת", reply: "לאסוף את גילי מהחוג", sub: "17:00", speaks: true,
+      buttons: [["secondary", LATER, "הזכר בעוד 10 דק׳"], ["primary", CHECK, "סיום"]] },
+    alarm: { label: "שעון מעורר", reply: "השכמה", sub: "07:00", speaks: false,
+      buttons: [["secondary", LATER, "נודניק 10 דק׳"], ["primary", STOP, "עצור"]] },
+    timer: { label: "טיימר", reply: "פסטה", sub: "טיימר של 10 דקות הסתיים", speaks: false,
+      buttons: [["primary", STOP, "עצור"]] },
+  };
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), spot = $("spot");
+  let kind = "reminder", timer = 0;
+  function show() {
+    const k = KINDS[kind];
+    $("label").textContent = k.label;
+    $("reply").textContent = k.reply;
+    $("sub").textContent = k.sub;
+    $("icon").innerHTML = ICONS[kind];
+    $("buttons").innerHTML = k.buttons.map(([c, i, t]) => `<span class="pill ${c}">${i}${t}</span>`).join("");
+    clearTimeout(timer);
+    spot.classList.remove("ringing");
+    if (k.speaks) timer = setTimeout(() => spot.classList.add("ringing"), 3200);
+    else requestAnimationFrame(() => spot.classList.add("ringing"));
+  }
+  for (const b of document.querySelectorAll("[data-kind]")) b.addEventListener("click", () => {
+    kind = b.dataset.kind;
+    for (const o of document.querySelectorAll("[data-kind]")) o.setAttribute("aria-pressed", String(o === b));
+    show();
+  });
+  for (const b of document.querySelectorAll("[data-o]")) b.addEventListener("click", () => {
+    stage.classList.toggle("portrait", b.dataset.o === "port");
+    for (const o of document.querySelectorAll("[data-o]")) o.setAttribute("aria-pressed", String(o === b));
+  });
+  $("replay").addEventListener("click", show);
+  show();
+})();
+</script>
+</body>
+</html>
