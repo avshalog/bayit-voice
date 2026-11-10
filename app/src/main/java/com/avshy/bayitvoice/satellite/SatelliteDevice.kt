@@ -19,6 +19,9 @@ import com.avshy.bayitvoice.satellite.proto.VoiceAssistantEvent
 import com.avshy.bayitvoice.satellite.proto.VoiceAssistantResponse
 import com.avshy.bayitvoice.satellite.proto.VoiceFeature
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +47,8 @@ class SatelliteDevice private constructor(private val context: Context) {
     private val settings = AppSettings.get(context)
     private var server: EspHomeServer? = null
     private var advertiser: SatelliteAdvertiser? = null
+    private var scope: CoroutineScope? = null
+    private var announceWatchdog: Job? = null
     var wakeWords: WakeWords? = null
 
     private val _ready = MutableStateFlow(false)
@@ -77,6 +82,7 @@ class SatelliteDevice private constructor(private val context: Context) {
 
     fun start(scope: CoroutineScope) {
         if (server != null) return
+        this.scope = scope
         val mac = settings.satelliteMac
         server = EspHomeServer(
             port = PORT,
@@ -143,7 +149,19 @@ class SatelliteDevice private constructor(private val context: Context) {
                 Log.i(TAG, "Timer ${event.type} '${event.name}' ${event.secondsLeft}/${event.totalSeconds} s")
                 _timerEvents.emit(event)
             }
-            MessageType.VOICE_ASSISTANT_ANNOUNCE_REQUEST -> _announcements.emit(AnnounceRequest.parse(message))
+            MessageType.VOICE_ASSISTANT_ANNOUNCE_REQUEST -> {
+                val request = AnnounceRequest.parse(message)
+                Log.i(TAG, "Announcement (start conversation: ${request.startConversation})")
+                // HA keeps the satellite "responding" until it hears back; never leave it waiting.
+                announceWatchdog?.cancel()
+                announceWatchdog = scope?.launch {
+                    delay(ANNOUNCE_TIMEOUT_MS)
+                    Log.w(TAG, "Announcement not finished in time; telling HA it failed")
+                    announceWatchdog = null
+                    send(Outgoing.announceFinished(false))
+                }
+                _announcements.emit(request)
+            }
             MessageType.VOICE_ASSISTANT_CONFIGURATION_REQUEST -> sendConfiguration()
             MessageType.VOICE_ASSISTANT_SET_CONFIGURATION -> {
                 val active = SetConfiguration.parse(message).activeWakeWords.firstOrNull()
@@ -156,6 +174,13 @@ class SatelliteDevice private constructor(private val context: Context) {
             MessageType.SUBSCRIBE_HOMEASSISTANT_SERVICES_REQUEST -> Unit
             else -> Log.d(TAG, "Ignoring message type ${message.type}")
         }
+    }
+
+    /** Tells HA an announcement (or a spoken reply) has finished playing. */
+    fun announceFinished(success: Boolean) {
+        announceWatchdog?.cancel()
+        announceWatchdog = null
+        send(Outgoing.announceFinished(success))
     }
 
     /** Fires an HA event from this device; HA adds the device id. Needs "Allow actions" in HA. */
@@ -174,6 +199,9 @@ class SatelliteDevice private constructor(private val context: Context) {
         private const val API_MINOR = 10
         private const val SERVER_INFO = "Bayit Voice"
         private const val MANUFACTURER = "Bayit Voice"
+
+        /** An announcement still unanswered after this is reported to HA as failed. */
+        private const val ANNOUNCE_TIMEOUT_MS = 120_000L
 
         /** Reported as the ESPHome version; HA reads features from the flags, not from this. */
         const val ESPHOME_VERSION = "2025.9.0"

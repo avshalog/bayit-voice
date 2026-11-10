@@ -96,13 +96,20 @@ class SessionActivity : ComponentActivity() {
             }
         }
 
-        if (savedInstanceState == null) startWithPermission(intent.isFromWakeWord(), SessionLauncher.detection(intent))
+        if (savedInstanceState == null) start(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         sheetVisible.targetState = true
-        startWithPermission(intent.isFromWakeWord(), SessionLauncher.detection(intent))
+        start(intent)
+    }
+
+    /** An announcement from HA plays; anything else starts a conversation. */
+    private fun start(intent: Intent) {
+        val announcement = SessionLauncher.announcement(intent)
+        if (announcement != null) viewModel.announce(announcement)
+        else startWithPermission(intent.isFromWakeWord(), SessionLauncher.detection(intent))
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {

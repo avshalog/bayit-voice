@@ -12,6 +12,7 @@ import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.config.AssistLink
 import com.avshy.bayitvoice.config.ServerUrl
 import com.avshy.bayitvoice.satellite.SatelliteDevice
+import com.avshy.bayitvoice.satellite.proto.AnnounceRequest
 import com.avshy.bayitvoice.satellite.proto.Outgoing
 import com.avshy.bayitvoice.satellite.proto.VoiceAssistantEvent
 import com.avshy.bayitvoice.satellite.proto.VoiceEvent
@@ -144,6 +145,28 @@ class AssistSession(
             Log.w(TAG, "Microphone failure", e)
             fail(SessionError.Microphone)
         }
+    }
+
+    /**
+     * Plays an announcement HA sent to this satellite (SPEC section 10): the pre-announce sound,
+     * then the message, with its text on screen. Then tells HA it is done and, if HA asked for it,
+     * listens for an answer as a hands-free conversation.
+     */
+    suspend fun announce(request: AnnounceRequest): SessionEnd {
+        val device = satellite?.takeIf { settings.assistLink == AssistLink.Satellite } ?: return SessionEnd.Failed
+        _state.update { SessionState(phase = SessionPhase.Speaking, replyText = request.text.withoutNiqqud()) }
+        var played = true
+        for (media in listOf(request.preannounceMediaId, request.mediaId)) {
+            val url = satelliteTtsUrl(media.takeIf { it.isNotEmpty() }) ?: continue
+            runCatching { tts.play(url) }.onFailure {
+                played = false
+                Log.w(TAG, "Announcement playback failed", it)
+            }
+        }
+        device.announceFinished(played)
+        if (request.startConversation && device.ready.value) return converse(fromWakeWord = true)
+        _state.update { it.copy(phase = SessionPhase.Done) }
+        return SessionEnd.Completed
     }
 
     /** Gets a live connection (reusing a kept one) and returns the address it reached. */
@@ -528,7 +551,7 @@ class AssistSession(
             runCatching { tts.play(url) }.onFailure { Log.w(TAG, "TTS playback failed", it) }
         }
         // HA waits for this before it treats the reply as heard (and before a follow-up).
-        device.send(Outgoing.announceFinished(true))
+        device.announceFinished(true)
         return TurnOutcome.Succeeded(nextConversationId, continueConversation)
     }
 

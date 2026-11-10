@@ -11,6 +11,7 @@ import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.config.NetworkInfo
 import com.avshy.bayitvoice.ha.ConnectionManager
 import com.avshy.bayitvoice.satellite.SatelliteDevice
+import com.avshy.bayitvoice.satellite.proto.AnnounceRequest
 import com.avshy.bayitvoice.timer.PhoneAlarms
 import com.avshy.bayitvoice.session.AssistSession
 import com.avshy.bayitvoice.session.SessionEnd
@@ -87,6 +88,31 @@ class SessionViewModel(app: Application) : AndroidViewModel(app) {
                     // Long enough to read the error, but never left on screen for good.
                     ended = true
                     scheduleAutoClose(idleCloseSeconds())
+                }
+            }
+        }
+    }
+
+    /** Plays an announcement from HA, and listens for an answer if HA asked for one. */
+    fun announce(request: AnnounceRequest) {
+        cancelAutoClose()
+        ended = false
+        touched = false
+        _closeRequested.value = false
+        val previous = conversation
+        conversation = viewModelScope.launch {
+            previous?.cancelAndJoin()
+            val end = try {
+                MicArbiter.beginSession()
+                session.announce(request)
+            } finally {
+                MicArbiter.endSession()
+            }
+            when (end) {
+                SessionEnd.Silent -> _closeRequested.value = true
+                else -> {
+                    ended = true
+                    scheduleAutoClose(if (touched) idleCloseSeconds() else settings.autoCloseSeconds)
                 }
             }
         }

@@ -8,6 +8,7 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import com.avshy.bayitvoice.R
+import com.avshy.bayitvoice.satellite.proto.AnnounceRequest
 import com.avshy.bayitvoice.session.WakeDetection
 
 /**
@@ -58,6 +59,40 @@ object SessionLauncher {
         }
         notify(context, Notifications.ID_SESSION, intent, R.string.notification_session_title, R.string.notification_session_text, fullScreen = true)
     }
+
+    /**
+     * Opens the session UI to play an announcement HA sent to this satellite. Without "display
+     * over other apps" it posts a full-screen notification, like a wake word does.
+     */
+    fun openAnnouncement(context: Context, request: AnnounceRequest) {
+        val intent = activityIntent(context, SESSION_ACTIVITY)
+            .putExtra(EXTRA_ANNOUNCE_MEDIA, request.mediaId)
+            .putExtra(EXTRA_ANNOUNCE_TEXT, request.text)
+            .putExtra(EXTRA_ANNOUNCE_PREANNOUNCE, request.preannounceMediaId)
+            .putExtra(EXTRA_ANNOUNCE_CONVERSATION, request.startConversation)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (Settings.canDrawOverlays(context)) {
+            context.startActivity(intent)
+            return
+        }
+        notify(context, Notifications.ID_SESSION, intent, R.string.notification_session_title, R.string.notification_session_text, fullScreen = true)
+    }
+
+    /** The announcement a session was opened to play; null for any other start. */
+    fun announcement(intent: Intent): AnnounceRequest? {
+        if (!intent.hasExtra(EXTRA_ANNOUNCE_MEDIA)) return null
+        return AnnounceRequest(
+            mediaId = intent.getStringExtra(EXTRA_ANNOUNCE_MEDIA).orEmpty(),
+            text = intent.getStringExtra(EXTRA_ANNOUNCE_TEXT).orEmpty(),
+            preannounceMediaId = intent.getStringExtra(EXTRA_ANNOUNCE_PREANNOUNCE).orEmpty(),
+            startConversation = intent.getBooleanExtra(EXTRA_ANNOUNCE_CONVERSATION, false),
+        )
+    }
+
+    private const val EXTRA_ANNOUNCE_MEDIA = "announce_media"
+    private const val EXTRA_ANNOUNCE_TEXT = "announce_text"
+    private const val EXTRA_ANNOUNCE_PREANNOUNCE = "announce_preannounce"
+    private const val EXTRA_ANNOUNCE_CONVERSATION = "announce_conversation"
 
     /** Shows the timer screen (a timer is ringing), over the lock screen if needed. */
     fun openTimer(context: Context) {

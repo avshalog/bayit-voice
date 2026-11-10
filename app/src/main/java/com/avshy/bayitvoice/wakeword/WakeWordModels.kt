@@ -121,26 +121,27 @@ class WakeWordModels(context: Context) {
         private const val KEY_IMPORTED = "imported"
         private const val OWW_DIR = "openwakeword/"
 
-        const val DEFAULT_MODEL_ID = "builtin:hey_jarvis"
+        const val DEFAULT_MODEL_ID = "builtin:hey_bayit"
 
         /**
          * Shipped in assets: openWakeWord's pre-trained models (CC BY-NC-SA 4.0), and the project's
-         * own "היי בית" model, trained with tools/wake_word_training on the same openWakeWord data.
+         * own "היי בית" model, trained with tools/wake_word_training on the same openWakeWord data
+         * plus real recordings (v0.2). A retrained model gets a new version suffix, same id.
          */
         val BUILT_IN = listOf(
-            builtIn("hey_bayit", "היי בית"),
+            builtIn("hey_bayit", "היי בית", "v0.2"),
             builtIn("alexa", "Alexa"),
             builtIn("hey_jarvis", "Hey Jarvis"),
             builtIn("hey_mycroft", "Hey Mycroft"),
             builtIn("hey_rhasspy", "Hey Rhasspy"),
         )
 
-        private fun builtIn(key: String, name: String) = WakeWordModel(
+        private fun builtIn(key: String, name: String, version: String = "v0.1") = WakeWordModel(
             id = "builtin:$key",
             name = name,
             engine = WakeEngineType.OpenWakeWord,
             builtIn = true,
-            location = "$OWW_DIR${key}_v0.1.tflite",
+            location = "$OWW_DIR${key}_$version.tflite",
         )
     }
 }

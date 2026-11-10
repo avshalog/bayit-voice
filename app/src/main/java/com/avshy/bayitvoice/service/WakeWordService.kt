@@ -58,6 +58,7 @@ class WakeWordService : Service() {
     )
     private var listening: Job? = null
     private var connection: Job? = null
+    private var announcements: Job? = null
     private var engine: WakeWordEngine? = null
     private var detector: WakeWordDetector? = null
     private var currentModelName: String? = null
@@ -168,6 +169,11 @@ class WakeWordService : Service() {
             satellite.wakeWords = SatelliteWakeWords(this)
             satellite.start(scope)
             satellite.sendConfiguration()
+            if (announcements == null) {
+                announcements = scope.launch {
+                    satellite.announcements.collect { SessionLauncher.openAnnouncement(this@WakeWordService, it) }
+                }
+            }
             TimerAlarms.get(this).start(scope)
             DeviceAlarms.get(this).apply {
                 onReminder = { satellite.fireEvent(REMINDER_EVENT, mapOf("text" to it.text, "time" to it.clock)) }
