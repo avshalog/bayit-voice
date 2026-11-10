@@ -197,7 +197,9 @@
     <string name="idle_night_start">Night starts</string>
     <string name="idle_night_end">Night ends</string>
     <string name="idle_night_help">At night only a dim red clock is shown. Use the same time for both to turn night mode off.</string>
-    <string name="idle_time_hint">e.g. 23:00</string>
+    <string name="idle_time_cancel">Cancel</string>
+    <string name="idle_time_keyboard">Type</string>
+    <string name="idle_time_dial">Clock</string>
     <string name="idle_night_mode">At night</string>
     <string name="idle_night_dim_clock">Dim red clock</string>
     <string name="idle_night_screen_off">Screen off (the wake word, a timer or an announcement still turns it on)</string>

@@ -195,7 +195,9 @@
     <string name="idle_night_start">תחילת לילה</string>
     <string name="idle_night_end">סוף לילה</string>
     <string name="idle_night_help">בלילה מוצג רק שעון אדום ועמום. אותה שעה בשני השדות מבטלת את מצב הלילה.</string>
-    <string name="idle_time_hint">לדוגמה 23:00</string>
+    <string name="idle_time_cancel">ביטול</string>
+    <string name="idle_time_keyboard">הקלדה</string>
+    <string name="idle_time_dial">שעון</string>
     <string name="idle_night_mode">בלילה</string>
     <string name="idle_night_dim_clock">שעון אדום עמום</string>
     <string name="idle_night_screen_off">מסך כבוי (מילת ההפעלה, טיימר או הכרזה עדיין מדליקים אותו)</string>

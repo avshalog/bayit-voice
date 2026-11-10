@@ -3,10 +3,29 @@ package com.avshy.bayitvoice.ui.idle
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -157,37 +176,87 @@ private fun ChoiceRow(label: Int, selected: Boolean, onSelect: () -> Unit) {
     }
 }
 
-/** An HH:MM field; the value is saved only when it parses as a valid time. */
+/** A time shown as HH:MM; tapping it opens a 24-hour picker, so nothing is typed into the field. */
 @Composable
 private fun TimeField(label: Int, minute: Int, onChange: (Int) -> Unit, modifier: Modifier) {
-    var text by remember { mutableStateOf(formatMinute(minute)) }
-    val valid = parseMinute(text) != null
-    OutlinedTextField(
-        value = text,
-        onValueChange = { value ->
-            text = value.filter { it.isDigit() || it == ':' }.take(5)
-            parseMinute(text)?.let(onChange)
-        },
-        label = { Text(stringResource(label)) },
-        placeholder = { Text(stringResource(R.string.idle_time_hint)) },
-        isError = !valid,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = modifier,
-    )
+    var value by remember { mutableStateOf(minute) }
+    var picking by remember { mutableStateOf(false) }
+    Box(modifier) {
+        OutlinedTextField(
+            value = formatMinute(value),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(label)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Covers the field, so a tap opens the picker instead of focusing the text.
+        Box(Modifier.matchParentSize().clickable { picking = true })
+    }
+    if (picking) {
+        TimePickerDialog(
+            title = stringResource(label),
+            minute = value,
+            onConfirm = { value = it; onChange(it); picking = false },
+            onDismiss = { picking = false },
+        )
+    }
+}
+
+/** The Material 24-hour clock dial, with a switch to two number boxes (hour : minute). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(title: String, minute: Int, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
+    val state = rememberTimePickerState(initialHour = minute / 60, initialMinute = minute % 60, is24Hour = true)
+    var dial by remember { mutableStateOf(true) }
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val picker = @Composable {
+        // Hours read left to right, and the dial keeps its usual layout, in Hebrew too.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            if (dial) TimePicker(state) else TimeInput(state)
+        }
+    }
+    val toggle = @Composable {
+        TextButton(onClick = { dial = !dial }) {
+            Text(stringResource(if (dial) R.string.idle_time_keyboard else R.string.idle_time_dial))
+        }
+    }
+    val cancel = @Composable { TextButton(onClick = onDismiss) { Text(stringResource(R.string.idle_time_cancel)) } }
+    val ok = @Composable {
+        TextButton(onClick = { onConfirm(state.hour * 60 + state.minute) }) { Text(stringResource(R.string.dialog_ok)) }
+    }
+    val heading = @Composable { Text(title, style = MaterialTheme.typography.labelLarge) }
+
+    // The picker is wider than a default dialog in landscape, so the dialog sizes itself to it.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(shape = MaterialTheme.shapes.extraLarge, tonalElevation = 6.dp, modifier = Modifier.padding(16.dp)) {
+            if (landscape) {
+                // A landscape screen is too short for the buttons under the dial: they go beside it.
+                Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(horizontalAlignment = Alignment.Start, modifier = Modifier.padding(end = 16.dp)) {
+                        heading()
+                        Spacer(Modifier.height(24.dp))
+                        toggle()
+                        cancel()
+                        ok()
+                    }
+                    picker()
+                }
+            } else {
+                Column(Modifier.padding(horizontal = 24.dp, vertical = 16.dp), horizontalAlignment = Alignment.End) {
+                    Box(Modifier.align(Alignment.Start).padding(bottom = 12.dp)) { heading() }
+                    picker()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        toggle()
+                        Spacer(Modifier.width(24.dp))
+                        cancel()
+                        ok()
+                    }
+                }
+            }
+        }
+    }
 }
 
 internal fun formatMinute(minute: Int) = "%02d:%02d".format(Locale.ROOT, minute / 60, minute % 60)
-
-/** "23:00", "6:30" or "0630" → minutes since midnight; null when it is not a time. */
-internal fun parseMinute(text: String): Int? {
-    val digits = text.replace(":", "")
-    val (h, m) = when {
-        ':' in text -> text.split(':').let { it.getOrNull(0)?.toIntOrNull() to it.getOrNull(1)?.toIntOrNull() }
-        digits.length == 4 -> digits.take(2).toIntOrNull() to digits.drop(2).toIntOrNull()
-        else -> null to null
-    }
-    if (h == null || m == null || h !in 0..23 || m !in 0..59) return null
-    return h * 60 + m
-}
