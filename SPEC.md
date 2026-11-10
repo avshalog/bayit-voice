@@ -344,7 +344,7 @@ HA's timers are durations only and live in HA's memory, so a wake-up alarm or a 
 
 - **Kinds.** Both are one-time, at a time of day (the next time that clock time comes), with no repeat rules. Each request adds a new one, and several of each can be set.
   - *Alarm*: rings with the timer's ringing screen and sound, with "Stop" and "Snooze" (9 minutes).
-  - *Reminder*: has a text. At its time it chimes once and shows the text, with "Done" and "Remind me in 10 minutes"; it does not keep ringing.
+  - *Reminder*: has a text. At its time it rings like an alarm and shows the text, with "Done" and "Remind me in 10 minutes".
 - **Nothing shows before the time.** Alarms and reminders have no chip on the idle screen, the overlay or the night clock; only the ringing screen at their time.
 - **How HA reaches the device.** The device lists user-defined actions in the ESPHome API (`ListEntitiesServicesResponse`, id 41; HA runs them with `ExecuteServiceRequest`, id 42, and the device answers with `ExecuteServiceResponse`, id 131). HA registers them as `esphome.<device name>_<action>`; this needs no "Allow actions" option. Actions:
   - `set_alarm` (time "HH:MM", optional label) and `set_reminder` (time "HH:MM" or minutes from now, text): add one, and answer with its id and when it fires, so the assistant can confirm it.
@@ -353,9 +353,9 @@ HA's timers are durations only and live in HA's memory, so a wake-up alarm or a 
   The assistant uses them through HA scripts that take the room, like the music scripts, so "wake me at 7" said to a device sets it on that device. The scripts are home setup, not part of the app; the README gives an example.
 - **Spoken reminders (optional).** When a reminder fires, the device also sends HA the event `esphome.bayit_reminder` with its text (HA adds the device id). A home automation can answer it with `assist_satellite.announce` on that device to speak the text. Events need "Allow the device to perform Home Assistant actions"; without it the reminder still chimes and shows its text.
 - **On the device.** Alarms are stored in the app's settings, so they survive an HA restart, a dropped connection and a reboot (the listening service starts on boot). The listening service keeps the countdown, as for timers (no exact `AlarmManager` alarm; same reasons). Times follow the device's clock and time zone. One that was missed while the device was off rings once when the service starts, if it is less than 30 minutes late, and is dropped otherwise.
-- **Ringing.** The same screen as a finished timer, over the lock screen and other apps, with the alarm's label or the reminder's text. The wake word silences it, as for timers. An alarm stops by itself after 10 minutes and counts as dismissed.
+- **Ringing.** The same screen as a finished timer, over the lock screen and other apps, with the alarm's label or the reminder's text. The wake word silences it, as for timers. An alarm or reminder rings until stopped, or stops by itself after 10 minutes and counts as dismissed.
 - **Timers on screen.** The idle screen and the overlay show only the nearest running timer, with no count of the others. When it finishes, its ringing screen opens, and the next timer takes its place on the chip.
-- **Direct mode** has none of this: on a personal phone the system clock app does it.
+- **Direct mode.** A phone in direct mode sets both in its own clock app, as "Hey Google" does (`AlarmClock.ACTION_SET_ALARM`, no UI; a reminder is an alarm labelled "Reminder: <text>"). HA cannot call the phone, so the home scripts ask first: they fire the event `bayit_voice_alarm` (request id, action, kind, time or minutes, text). A phone in direct mode subscribes to it over its WebSocket during each turn (this needs an admin token), handles it, and answers with `bayit_voice_alarm_ack` (the same request id, and what it set). The script waits 1.5 s for that answer; with none, it uses the satellite. Listing and cancelling on a phone are done in the clock app; the phone answers so, and the assistant says it.
 
 ## 11. Idle screen (Phase 4)
 

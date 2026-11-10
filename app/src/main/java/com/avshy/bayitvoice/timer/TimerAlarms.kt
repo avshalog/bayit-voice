@@ -118,7 +118,7 @@ class TimerAlarms private constructor(private val context: Context) {
         SessionLauncher.openTimer(context)
     }
 
-    /** Rings one of this device's alarms (until stopped) or reminders (a short chime). */
+    /** Rings one of this device's alarms or reminders, until stopped. */
     @Synchronized
     fun ringAlarm(alarm: DeviceAlarm) {
         val kind = if (alarm.kind == AlarmKind.ALARM) RingKind.ALARM else RingKind.REMINDER
@@ -127,19 +127,11 @@ class TimerAlarms private constructor(private val context: Context) {
         val entry = ActiveTimer(id, alarm.text, 0, SystemClock.elapsedRealtime(), ringing = true, kind = kind, clock = alarm.clock)
         _timers.update { list -> list.filterNot { it.id == id } + entry }
         val scope = scope ?: return
-        if (kind == RingKind.ALARM) {
-            sound?.cancel()
-            sound = scope.launch {
-                AlarmSound.play(MAX_ALARM_RING_MS)
-                stopRinging()
-            }
-        } else {
-            if (sound?.isActive != true) scope.launch { AlarmSound.play(REMINDER_CHIME_MS) }
-            // A reminder does not keep ringing; its screen closes by itself after a while.
-            countdowns[id] = scope.launch {
-                delay(MAX_ALARM_RING_MS)
-                remove(id)
-            }
+        // Alarms and reminders both ring until stopped, or for at most 10 minutes.
+        sound?.cancel()
+        sound = scope.launch {
+            AlarmSound.play(MAX_ALARM_RING_MS)
+            stopRinging()
         }
         SessionLauncher.openTimer(context)
     }
@@ -195,7 +187,6 @@ class TimerAlarms private constructor(private val context: Context) {
 
         /** An alarm stops by itself after this long, and a reminder's screen closes. */
         private const val MAX_ALARM_RING_MS = 10 * 60_000L
-        private const val REMINDER_CHIME_MS = 2_500L
 
         @Volatile private var instance: TimerAlarms? = null
 

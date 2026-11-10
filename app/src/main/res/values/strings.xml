@@ -209,6 +209,7 @@
     <string name="timer_stop">Stop</string>
     <string name="timer_cancel">Cancel timer</string>
     <string name="timer_close">Close</string>
+    <string name="phone_reminder_label">Reminder: %1$s</string>
     <string name="alarm_default_name">Alarm</string>
     <string name="alarm_snooze">Snooze %1$d min</string>
     <string name="reminder_subtitle">Reminder · %1$s</string>

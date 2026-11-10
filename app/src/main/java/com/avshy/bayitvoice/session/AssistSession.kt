@@ -17,6 +17,7 @@ import com.avshy.bayitvoice.satellite.proto.VoiceAssistantEvent
 import com.avshy.bayitvoice.satellite.proto.VoiceEvent
 import kotlinx.coroutines.CoroutineStart
 import com.avshy.bayitvoice.ha.HaClient
+import com.avshy.bayitvoice.timer.PhoneAlarms
 import com.avshy.bayitvoice.ha.HaException
 import com.avshy.bayitvoice.ha.HaVersion
 import com.avshy.bayitvoice.ha.ConnectionManager
@@ -50,6 +51,11 @@ class AssistSession(
     private val satellite: SatelliteDevice? = null,
     private val mic: MicRecorder = MicRecorder(),
     private val tts: TtsPlayer = TtsPlayer(),
+    /**
+     * Direct mode: answers an alarm request HA sends during the turn (SPEC section 10.1); gets
+     * the request's event data and returns the answer's. Null: requests are not followed.
+     */
+    private val onAlarmRequest: ((JSONObject) -> JSONObject)? = null,
 ) {
     private val _state = MutableStateFlow(SessionState())
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -203,6 +209,10 @@ class AssistSession(
                         return@coroutineScope true
                     }
                 }
+                // An alarm asked for in this turn reaches this phone as an HA event (needs an admin token).
+                val alarmSub = onAlarmRequest?.let {
+                    runCatching { client.send("subscribe_events", JSONObject().put("event_type", PhoneAlarms.REQUEST_EVENT)) }.getOrNull()
+                }
                 val runId = client.send("assist_pipeline/run", request)
                 Log.i(TAG, "Pipeline run $runId started")
                 withTimeoutOrNull(RUN_TIMEOUT_MS) {
@@ -210,6 +220,10 @@ class AssistSession(
                     var timer: Job? = null
                     while (true) {
                         val msg = client.receive()
+                        if (alarmSub != null && msg.optString("type") == "event" && msg.optInt("id") == alarmSub) {
+                            answerAlarmRequest(msg)
+                            continue
+                        }
                         if (msg.optString("type") != "event" || msg.optInt("id") != runId) continue
                         val event = msg.getJSONObject("event")
                         val data = event.optJSONObject("data") ?: JSONObject()
@@ -263,6 +277,9 @@ class AssistSession(
                         }
                     }
                     timer?.cancel()
+                    alarmSub?.let { id ->
+                        runCatching { client.send("unsubscribe_events", JSONObject().put("subscription", id)) }
+                    }
                     true
                 } ?: false
             } finally {
@@ -292,6 +309,15 @@ class AssistSession(
             return TurnOutcome.Failed(SessionError.Server(_state.value.replyText))
         }
         return TurnOutcome.Succeeded(nextConversationId, continueConversation)
+    }
+
+    /** Sets the alarm in the phone's clock app and tells the HA script it was handled here. */
+    private fun answerAlarmRequest(msg: JSONObject) {
+        val data = msg.optJSONObject("event")?.optJSONObject("data") ?: return
+        val answer = runCatching { onAlarmRequest?.invoke(data) }.getOrNull() ?: return
+        runCatching {
+            client.send("fire_event", JSONObject().put("event_type", PhoneAlarms.ACK_EVENT).put("event_data", answer))
+        }.onFailure { Log.w(TAG, "Could not answer the alarm request: ${it.javaClass.simpleName}") }
     }
 
     private class Verdict(val winner: String?, val spoke: Boolean)

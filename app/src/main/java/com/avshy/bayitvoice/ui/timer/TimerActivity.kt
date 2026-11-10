@@ -191,9 +191,7 @@ private fun Ringing(timer: ActiveTimer, onStop: () -> Unit, onLater: (Int) -> Un
             }
         }
         Spacer(Modifier.height(if (compact) 8.dp else 12.dp))
-        if (timer.kind != RingKind.REMINDER) {
-            Text(stringResource(R.string.timer_stop_hint), color = Color(TimerColors.MUTED), fontSize = 14.sp)
-        }
+        Text(stringResource(R.string.timer_stop_hint), color = Color(TimerColors.MUTED), fontSize = 14.sp)
         Spacer(Modifier.height(if (compact) 4.dp else 16.dp))
     }
     }
