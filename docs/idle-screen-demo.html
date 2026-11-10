@@ -57,7 +57,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .portrait .date { font-size: 6.6cqw; margin-top: 3cqw; }
 .portrait .hdate { font-size: 5.8cqw; }
 .portrait .device { --u: 1cqw; }
-.portrait .timer { grid-row: 2; align-self: center; }
+.portrait .alerts { grid-row: 2; align-self: center; align-items: center; }
 .portrait .now { grid-row: 3; text-align: center; margin-bottom: 4cqw; }
 .portrait .temp { font-size: 34cqw; }
 .portrait .cond { font-size: 8.5cqw; margin-top: 2cqw; }
@@ -72,7 +72,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
   padding: calc(var(--u) * 2.2); border-radius: calc(var(--u) * 5); text-shadow: none; text-align: start; }
 .has-music .details { display: none; }
 .has-music .music { display: flex; }
-.no-timer .timer { visibility: hidden; }
+.no-timer .timer { display: none; }
 .art { flex: none; width: calc(var(--u) * 27); height: calc(var(--u) * 27); border-radius: calc(var(--u) * 2.6);
   background: radial-gradient(circle at 30% 25%, #f6c36b 0 18%, transparent 19%), linear-gradient(140deg, #d2563b, #5b2a6e 60%, #1f2a52);
   box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
@@ -92,7 +92,28 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 .vol .bar i { width: 55%; }
 .portrait .music { grid-row: 4; }
 /* Landscape: the timer under the dates (start side), the details or music card under the weather (end side). */
-.bottom .timer { order: -1; }
+.bottom .alerts { order: -1; }
+.alerts { display: flex; flex-direction: column; align-items: flex-start; gap: calc(var(--u) * 1.8); min-width: 0; }
+.stage:not(.portrait) .temp { text-align: left; }
+
+/* Ringing screens for an alarm and a reminder: the same screen as a finished timer. */
+.rings { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.ring { aspect-ratio: 20 / 9; position: relative; }
+.ring .device { --u: 1cqh; }
+.ring .screen { background: #0B0C10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: calc(var(--u) * 2.2); text-align: center; padding: 0 6cqw; }
+.ring .bell { width: calc(var(--u) * 26); height: calc(var(--u) * 26); border-radius: 50%; border: 3px solid #7FA6FF;
+  display: grid; place-items: center; font-size: calc(var(--u) * 10); animation: pulse 1.2s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 0.45; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ring .bell { animation: none; } }
+.ring h3 { margin: 0; font-size: calc(var(--u) * 9); font-weight: 500; color: #F5F6F8; line-height: 1.15; }
+.ring p { margin: 0; font-size: calc(var(--u) * 5.2); color: #9EA3AE; }
+.ring .btns { display: flex; gap: calc(var(--u) * 3); width: min(100%, calc(var(--u) * 120)); margin-top: calc(var(--u) * 2); }
+.ring .btns span { flex: 1; display: grid; place-items: center; height: calc(var(--u) * 15); border-radius: 999px;
+  font-size: calc(var(--u) * 5.6); font-weight: 500; }
+.ring .primary { background: #7FA6FF; color: #0E1013; }
+.ring .secondary { border: 1px solid rgba(255,255,255,0.25); color: #ECEDF0; }
+.ring-label { color: var(--muted); font-size: 14px; margin: 0 0 6px; }
 .bottom { gap: calc(var(--u) * 3); position: absolute; inset-inline: 3.4cqw; bottom: 4cqh; }
 .portrait .bottom { position: static; }
 </style>
@@ -142,10 +163,33 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
                 </div>
               </div>
             </div>
-            <div class="timer glass">⏳ פסטה <b>06:12</b></div>
+            <div class="alerts">
+              <div class="timer glass">⏳ פסטה <b>06:12</b></div>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="rings">
+    <div>
+      <p class="ring-label">שעון מעורר מצלצל</p>
+      <div class="ring"><div class="device"><div class="screen">
+        <div class="bell" aria-hidden="true">⏰</div>
+        <h3>השכמה</h3>
+        <p>07:00</p>
+        <div class="btns"><span class="secondary">נודניק 9 דק׳</span><span class="primary">עצור</span></div>
+        <p>או אמור את מילת ההפעלה</p>
+      </div></div></div>
+    </div>
+    <div>
+      <p class="ring-label">תזכורת (מצלצלת פעם אחת ומוקראת בקול)</p>
+      <div class="ring"><div class="device"><div class="screen">
+        <div class="bell" aria-hidden="true">🔔</div>
+        <h3>לאסוף את גילי מהחוג</h3>
+        <p>תזכורת · 17:00</p>
+        <div class="btns"><span class="secondary">הזכר בעוד 10 דק׳</span><span class="primary">סיום</span></div>
+      </div></div></div>
     </div>
   </div>
   <p class="note">הדגמת סגנון בלבד: נוף בשכבות עם אובך, חורש ים-תיכוני בחזית (אלונים, אורני ים, ברושים ושיחים), ערפל בין הרכסים, אור שמש וקרניים, עננים רכים, גשם, ברקים, כוכבים וציפורים מדי פעם. הכול מצויר בקוד, כך שאפשר לבנות אותו ב-Canvas של Compose. במכשיר ההנפשה רצה רק כשהמסך מוצג ונעצרת במצב לילה. הטיימר סופר לאחור, וכרטיס המוזיקה מגיב: נגן/השהה, הבא (כולל רדיו בשידור חי, בלי פס התקדמות) וגרירה על פס העוצמה.</p>
