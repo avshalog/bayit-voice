@@ -40,7 +40,7 @@ data class NowPlaying(
 
 /**
  * The room's media player for the idle screen (SPEC section 11), over the satellite's ESPHome link:
- * its state and attributes, and play/pause, next and volume as HA actions. Holds no UI.
+ * its state and attributes, and play/pause, previous, next and volume as HA actions. Holds no UI.
  */
 class IdleMusic(context: Context) {
 
@@ -79,6 +79,8 @@ class IdleMusic(context: Context) {
     fun playPause() = command("media_player.media_play_pause")
 
     fun next() = command("media_player.media_next_track")
+
+    fun previous() = command("media_player.media_previous_track")
 
     fun setVolume(level: Double) {
         val entity = entityId ?: return

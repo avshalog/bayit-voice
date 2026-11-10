@@ -171,6 +171,7 @@
     <string name="idle_music_play">נגן</string>
     <string name="idle_music_pause">השהה</string>
     <string name="idle_music_next">הבא</string>
+    <string name="idle_music_previous">הקודם</string>
     <string name="idle_music_volume">עוצמה</string>
     <string name="idle_weather_help">ישות מזג האוויר של HA שתוצג (בחיבור לוויין). כדי להציג מקסימום ומינימום להיום, הפעילו ב-HA למכשיר הזה את \"Allow the device to perform Home Assistant actions\" (הגדרות › מכשירים ושירותים › ESPHome › הגדר).</string>
     <!-- Each number with its degree sign is isolated left-to-right (U+2066 … U+2069), so the sign stays after it. -->

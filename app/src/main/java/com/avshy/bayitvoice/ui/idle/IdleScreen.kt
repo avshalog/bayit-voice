@@ -38,6 +38,9 @@ import com.avshy.bayitvoice.music.NowPlaying
 import com.avshy.bayitvoice.timer.ActiveTimer
 import com.avshy.bayitvoice.timer.TimerAlarms
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import com.avshy.bayitvoice.weather.IdleWeather
 import com.avshy.bayitvoice.weather.WeatherNow
 import kotlin.math.roundToInt
@@ -114,8 +117,13 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
                         .clip(RoundedCornerShape(corner)),
                 ) {
                     WeatherScene(spec)
-                    if (h > w) PortraitContent(state, weather, extras, w, shift)
-                    else DayContent(state, weather, extras, w, unit, shift)
+                    val song = extras.playing
+                    when {
+                        h > w && song != null -> PortraitMusicContent(state, weather, extras, song, w, shift)
+                        h > w -> PortraitContent(state, weather, extras, w, shift)
+                        song != null -> DayMusicContent(state, weather, extras, song, w, unit, shift)
+                        else -> DayContent(state, weather, extras, w, unit, shift)
+                    }
                 }
             }
         }
@@ -127,7 +135,7 @@ private class Extras(val timers: List<ActiveTimer>, val playing: NowPlaying?, va
 
 /**
  * Landscape: clock and dates at the top start, weather at the top end, the timer chip at the
- * bottom start and the music card (or humidity and wind) at the bottom end.
+ * bottom start and humidity and wind at the bottom end.
  */
 @Composable
 private fun DayContent(state: IdleClockState, weather: WeatherNow?, extras: Extras, w: Dp, h: Dp, shift: Offset) {
@@ -141,17 +149,66 @@ private fun DayContent(state: IdleClockState, weather: WeatherNow?, extras: Extr
         ClockAndDates(state, ClockSizes(h * 0.50f, h * 0.08f, h * 0.07f, h * 0.03f), Alignment.Start, Modifier.align(Alignment.TopStart))
         if (weather != null) {
             WeatherNowText(weather, WeatherSizes(h * 0.24f, h * 0.08f, h * 0.07f), Alignment.End, Modifier.align(Alignment.TopEnd))
+            WeatherDetails(weather, h, Modifier.align(Alignment.BottomEnd))
         }
         TimerChip(extras.timers, u, Modifier.align(Alignment.BottomStart))
-        val playing = extras.playing
-        if (playing != null) MusicCard(playing, extras.music, u, Modifier.align(Alignment.BottomEnd))
-        else if (weather != null) WeatherDetails(weather, h, Modifier.align(Alignment.BottomEnd))
+    }
+}
+
+/**
+ * Landscape while music plays: a narrow column at the start with a smaller clock, the dates, the
+ * timer chip and the weather; the music card fills most of the rest, with the volume slider at the end.
+ */
+@Composable
+private fun DayMusicContent(state: IdleClockState, weather: WeatherNow?, extras: Extras, playing: NowPlaying, w: Dp, h: Dp, shift: Offset) {
+    val u = h / 100f
+    Row(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = w * 0.034f, vertical = h * 0.06f)
+            .offset(shift.x.toDp(h), shift.y.toDp(h)),
+        horizontalArrangement = Arrangement.spacedBy(u * 4f),
+    ) {
+        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+            ClockAndDates(state, ClockSizes(h * 0.28f, h * 0.065f, h * 0.055f, h * 0.025f), Alignment.Start, Modifier)
+            TimerChip(extras.timers, u * 0.8f)
+            if (weather != null) WeatherNowText(weather, WeatherSizes(h * 0.17f, h * 0.06f, h * 0.055f), Alignment.Start, Modifier)
+            else Spacer(Modifier)
+        }
+        NowPlayingCard(playing, extras.music, u, Modifier.fillMaxHeight().width(w * 0.44f))
+        playing.volume?.let { VolumeColumn(it, extras.music, u, Modifier.fillMaxHeight().width(u * 15f)) }
+    }
+}
+
+/**
+ * Portrait while music plays: the clock and dates at the top start with the weather at the top end,
+ * the timer chip under them, and the music card with the volume slider beside it filling the rest.
+ */
+@Composable
+private fun PortraitMusicContent(state: IdleClockState, weather: WeatherNow?, extras: Extras, playing: NowPlaying, w: Dp, shift: Offset) {
+    val u = w / 100f
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(w * 0.05f)
+            .offset(shift.x.toDp(w), shift.y.toDp(w)),
+        verticalArrangement = Arrangement.spacedBy(u * 5f),
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            ClockAndDates(state, ClockSizes(w * 0.22f, w * 0.05f, w * 0.045f, w * 0.02f), Alignment.Start, Modifier)
+            if (weather != null) WeatherNowText(weather, WeatherSizes(w * 0.14f, w * 0.05f, w * 0.045f), Alignment.End, Modifier)
+        }
+        TimerChip(extras.timers, u, Modifier.align(Alignment.CenterHorizontally))
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(u * 3f)) {
+            NowPlayingCard(playing, extras.music, u, Modifier.weight(1f).fillMaxHeight())
+            playing.volume?.let { VolumeColumn(it, extras.music, u, Modifier.fillMaxHeight().width(u * 15f)) }
+        }
     }
 }
 
 /**
  * Portrait: the clock across the top, the timer chip in the middle, and the weather large at the
- * bottom with the music card (or humidity and wind) under it. Sizes come from the width, the short side here.
+ * bottom with humidity and wind under it. Sizes come from the width, the short side here.
  */
 @Composable
 private fun PortraitContent(state: IdleClockState, weather: WeatherNow?, extras: Extras, w: Dp, shift: Offset) {
@@ -169,10 +226,8 @@ private fun PortraitContent(state: IdleClockState, weather: WeatherNow?, extras:
         }
         if (weather != null) {
             WeatherNowText(weather, WeatherSizes(w * 0.34f, w * 0.085f, w * 0.07f), Alignment.CenterHorizontally, Modifier.padding(bottom = w * 0.04f))
+            WeatherDetails(weather, w * 0.92f, Modifier)
         }
-        val playing = extras.playing
-        if (playing != null) MusicCard(playing, extras.music, u)
-        else if (weather != null) WeatherDetails(weather, w * 0.92f, Modifier)
     }
 }
 
@@ -342,4 +397,9 @@ object IdleColors {
     val night = Color(0xFF7A2E1C)
     val glass = Color(0x4D080C14)
     val glassEdge = Color(0x2EFFFFFF)
+    /** Over the artwork that fills the music card, so its text and controls stay readable. */
+    val artDim = Color(0x80000000)
+    val button = Color(0x2EFFFFFF)
+    val track = Color(0x40FFFFFF)
+    val thumbEdge = Color(0x26000000)
 }
