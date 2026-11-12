@@ -38,10 +38,14 @@ class PeerArbiter(context: Context) {
      */
     suspend fun claim(groupKey: ByteArray, mine: Claim, windowMs: Long): Outcome {
         val peers = LinkedHashMap<Long, Claim>()
+        val stale = HashSet<Long>()
         val ok = exchange(mine.encode(groupKey), windowMs) { buffer, length ->
             val claim = Claim.decode(buffer, length, groupKey) ?: return@exchange false
-            if (claim.deviceId != mine.deviceId && abs(System.currentTimeMillis() - claim.timestampMs) <= MAX_AGE_MS) {
+            if (claim.deviceId == mine.deviceId) return@exchange false
+            if (isFresh(claim.timestampMs)) {
                 peers[claim.deviceId] = claim
+            } else if (stale.add(claim.deviceId)) {
+                logStale(claim.deviceName, claim.timestampMs)
             }
             false
         }
@@ -66,12 +70,23 @@ class PeerArbiter(context: Context) {
         var received = false
         exchange(null, timeoutMs) { buffer, length ->
             val message = HandOff.decode(buffer, length, groupKey) ?: return@exchange false
-            received = message.toId == myId && message.fromId == fromId &&
-                abs(System.currentTimeMillis() - message.timestampMs) <= MAX_AGE_MS
+            if (message.toId != myId || message.fromId != fromId) return@exchange false
+            received = isFresh(message.timestampMs)
+            if (!received) logStale("device $fromId", message.timestampMs)
             received
         }
         Log.i(TAG, if (received) "Device $fromId handed the command over" else "No hand-over from device $fromId")
         return received
+    }
+
+    /** Within [MAX_AGE_MS] of this device's clock, either way: devices' clocks differ a little. */
+    private fun isFresh(timestampMs: Long) = abs(System.currentTimeMillis() - timestampMs) <= MAX_AGE_MS
+
+    /** A dropped message usually means the two devices' clocks are far apart. */
+    private fun logStale(from: String, timestampMs: Long) {
+        Log.w(TAG, "Ignoring a message from %s: its clock is %.1f s off this device's".format(
+            from, (timestampMs - System.currentTimeMillis()) / 1000f,
+        ))
     }
 
     /**
@@ -147,8 +162,11 @@ class PeerArbiter(context: Context) {
         /** Claims are repeated this often during the window. */
         private const val RESEND_MS = 80L
 
-        /** Older messages belong to an earlier wake word. */
-        private const val MAX_AGE_MS = 1_000L
+        /**
+         * Older messages belong to an earlier wake word. Generous, because it compares the
+         * sender's clock with this device's, and devices' clocks can be a second or more apart.
+         */
+        private const val MAX_AGE_MS = 5_000L
 
         /** A hand-over is repeated for this long, so a satellite listening on a busy network hears it. */
         private const val HAND_OFF_SEND_MS = 400L
