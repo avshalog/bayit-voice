@@ -319,6 +319,8 @@ private fun ClockAndDates(state: IdleClockState, sizes: ClockSizes, align: Align
                 fontSize = sizes.time.sp(),
                 lineHeight = sizes.time.sp(),
                 fontWeight = FontWeight.Light,
+                // Equal-width digits, so the time keeps its width when a minute changes.
+                fontFeatureSettings = "tnum",
                 textDirection = TextDirection.Ltr,
                 shadow = shadow,
                 // Trim the font's built-in space above and below the digits, so the date sits right under them.
@@ -351,6 +353,7 @@ private fun NightClock(time: String, h: Dp, shift: Offset) {
                 color = IdleColors.night,
                 fontSize = h.toSp(0.42f),
                 fontWeight = FontWeight.Light,
+                fontFeatureSettings = "tnum",
                 textDirection = TextDirection.Ltr,
             ),
         )
