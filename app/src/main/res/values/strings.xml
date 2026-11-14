@@ -70,6 +70,9 @@
     <string name="settings_section_wake_word">Wake word</string>
     <string name="wake_enabled">Listen for the wake word</string>
     <string name="wake_enabled_help">Keeps the microphone on in the background, with a permanent notification. Audio stays on the device until the wake word is heard.</string>
+    <string name="wake_service">Background service</string>
+    <string name="wake_service_help">Keeps this device connected to Home Assistant, with a permanent notification. Turning it off also disconnects it; it can only be turned on again here.</string>
+    <string name="wake_listening_help">Off: the microphone is released, but the device stays connected to Home Assistant. Also available there as a switch, for automations.</string>
     <string name="wake_model">Wake word model</string>
     <string name="wake_model_builtin">Built-in</string>
     <string name="wake_model_imported">Imported</string>

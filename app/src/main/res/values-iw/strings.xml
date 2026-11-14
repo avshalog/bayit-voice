@@ -68,6 +68,9 @@
     <string name="settings_section_wake_word">מילת הפעלה</string>
     <string name="wake_enabled">האזן למילת ההפעלה</string>
     <string name="wake_enabled_help">המיקרופון נשאר פעיל ברקע, עם התראה קבועה. השמע נשאר במכשיר עד שמילת ההפעלה נשמעת.</string>
+    <string name="wake_service">שירות רקע פעיל</string>
+    <string name="wake_service_help">שומר על ההתקן מחובר ל-Home Assistant, עם התראה קבועה. כיבוי מנתק אותו גם כן, ואפשר להדליק אותו שוב רק כאן.</string>
+    <string name="wake_listening_help">כבוי: המיקרופון מתפנה, אבל ההתקן נשאר מחובר ל-Home Assistant. זמין גם שם כמתג, לאוטומציות.</string>
     <string name="wake_model">מודל מילת הפעלה</string>
     <string name="wake_model_builtin">מובנה</string>
     <string name="wake_model_imported">מיובא</string>

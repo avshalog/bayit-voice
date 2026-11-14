@@ -61,7 +61,7 @@ fun WakeWordSettings(
     var renaming by remember { mutableStateOf<WakeWordModel?>(null) }
 
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.wake_enabled), modifier = Modifier.weight(1f))
+        Text(stringResource(if (satellite) R.string.wake_service else R.string.wake_enabled), modifier = Modifier.weight(1f))
         Switch(
             checked = state.enabled,
             onCheckedChange = { on ->
@@ -69,7 +69,18 @@ fun WakeWordSettings(
             },
         )
     }
-    Text(stringResource(R.string.wake_enabled_help), style = MaterialTheme.typography.bodySmall)
+    Text(
+        stringResource(if (satellite) R.string.wake_service_help else R.string.wake_enabled_help),
+        style = MaterialTheme.typography.bodySmall,
+    )
+    // Satellite mode: the same switch HA shows. Pausing keeps the service and the link to HA alive.
+    if (satellite && state.enabled) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.wake_enabled), modifier = Modifier.weight(1f))
+            Switch(checked = state.listening, onCheckedChange = viewModel::setListening)
+        }
+        Text(stringResource(R.string.wake_listening_help), style = MaterialTheme.typography.bodySmall)
+    }
     if (state.loadFailed) {
         Text(stringResource(R.string.wake_load_failed), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
     }

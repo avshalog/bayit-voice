@@ -13,6 +13,7 @@ import com.avshy.bayitvoice.arbitration.SessionArbitration
 import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.config.ConnectionMode
 import com.avshy.bayitvoice.ha.ConnectionManager
+import com.avshy.bayitvoice.service.ListenGate
 import com.avshy.bayitvoice.service.WakeWordService
 import com.avshy.bayitvoice.wakeword.WakeWordModel
 import com.avshy.bayitvoice.wakeword.WakeWordModels
@@ -26,6 +27,8 @@ import kotlinx.coroutines.withContext
 
 data class WakeWordUiState(
     val enabled: Boolean = false,
+    /** Satellite mode: listening for the wake word (not paused). */
+    val listening: Boolean = true,
     val models: List<WakeWordModel> = emptyList(),
     val selectedModelId: String = WakeWordModels.DEFAULT_MODEL_ID,
     val threshold: Float = AppSettings.DEFAULT_WAKE_THRESHOLD,
@@ -53,6 +56,8 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         reload()
+        // HA can switch listening while this screen is open.
+        viewModelScope.launch { ListenGate.paused(getApplication()).collect { paused -> _state.update { it.copy(listening = !paused) } } }
     }
 
     /** Re-reads settings and system permissions; call when the screen resumes. */
@@ -72,6 +77,9 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
         if (enabled) WakeWordService.start(getApplication()) else WakeWordService.stop(getApplication())
         reload()
     }
+
+    /** Satellite mode: pauses or resumes wake-word listening; the service and the link to HA keep running. */
+    fun setListening(on: Boolean) = ListenGate.setPaused(getApplication(), !on)
 
     fun selectModel(id: String) {
         settings.wakeModelId = id
@@ -144,6 +152,7 @@ class WakeWordViewModel(app: Application) : AndroidViewModel(app) {
         _state.update {
             it.copy(
                 enabled = settings.wakeWordEnabled,
+                listening = !settings.wakeListenPaused,
                 models = all,
                 selectedModelId = settings.wakeModelId.takeIf { id -> all.any { m -> m.id == id } }
                     ?: WakeWordModels.DEFAULT_MODEL_ID,
