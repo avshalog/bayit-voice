@@ -181,7 +181,6 @@ When `continue_conversation == true`, for example a clarifying question or a con
 2. Play a short "listening" chime.
 3. Start a new `assist_pipeline/run` immediately with the same `conversation_id`, without a wake word.
 4. If no speech is detected within about 8 s, end the session and close the UI.
-5. **At most 2 follow-ups in a row** per session. After that the session ends even if HA asks to continue, and the wake word starts a new one. Background speech (a TV, a conversation in the room) is transcribed as if it were a request; without a limit, an agent that ends its replies with a question keeps the session going indefinitely.
 
 ### 5.4 Audio hygiene
 
