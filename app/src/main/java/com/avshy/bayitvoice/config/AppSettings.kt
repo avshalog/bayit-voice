@@ -70,6 +70,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getBoolean(KEY_WAKE_ENABLED, false)
         set(value) = prefs.edit { putBoolean(KEY_WAKE_ENABLED, value) }
 
+    /** Satellite mode: the service runs but does not listen for the wake word (the HA switch is off). */
+    var wakeListenPaused: Boolean
+        get() = prefs.getBoolean(KEY_WAKE_PAUSED, false)
+        set(value) = prefs.edit { putBoolean(KEY_WAKE_PAUSED, value) }
+
     var wakeModelId: String
         get() = prefs.getString(KEY_WAKE_MODEL, null) ?: WakeWordModels.DEFAULT_MODEL_ID
         set(value) = prefs.edit { putString(KEY_WAKE_MODEL, value) }
@@ -253,6 +258,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_AUTO_CLOSE = "auto_close_seconds"
         private const val KEY_CHIME = "chime_enabled"
         private const val KEY_WAKE_ENABLED = "wake_enabled"
+        private const val KEY_WAKE_PAUSED = "wake_paused"
         private const val KEY_WAKE_MODEL = "wake_model"
         private const val KEY_WAKE_THRESHOLD = "wake_threshold"
         private const val KEY_WAKE_LOAD_FAILED = "wake_load_failed"

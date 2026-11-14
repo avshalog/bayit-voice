@@ -108,6 +108,7 @@
     <string name="notification_listening_text">מילת הפעלה: %1$s</string>
     <string name="notification_stop">עצור</string>
     <string name="notification_mic_busy">מושהה: אפליקציה אחרת משתמשת במיקרופון (למשל עוזר אחר עם מילת הפעלה).</string>
+    <string name="notification_listening_paused">ההאזנה למילת ההפעלה מושהית. ההתקן נשאר מחובר ל-Home Assistant.</string>
     <string name="notification_session_title">מילת ההפעלה זוהתה</string>
     <string name="notification_session_text">הקש כדי לדבר עם העוזר.</string>
     <string name="notification_boot_title">התחל להאזין</string>

@@ -14,6 +14,8 @@ import com.avshy.bayitvoice.satellite.proto.MessageType
 import com.avshy.bayitvoice.satellite.proto.Outgoing
 import com.avshy.bayitvoice.satellite.proto.SetConfiguration
 import com.avshy.bayitvoice.satellite.proto.SubscribeVoiceAssistant
+import com.avshy.bayitvoice.satellite.proto.SwitchCommand
+import com.avshy.bayitvoice.service.ListenGate
 import com.avshy.bayitvoice.satellite.proto.TimerEvent
 import com.avshy.bayitvoice.satellite.proto.VoiceAssistantEvent
 import com.avshy.bayitvoice.satellite.proto.VoiceAssistantResponse
@@ -49,6 +51,7 @@ class SatelliteDevice private constructor(private val context: Context) {
     private var advertiser: SatelliteAdvertiser? = null
     private var scope: CoroutineScope? = null
     private var announceWatchdog: Job? = null
+    private var listenJob: Job? = null
     var wakeWords: WakeWords? = null
 
     private val _ready = MutableStateFlow(false)
@@ -94,9 +97,13 @@ class SatelliteDevice private constructor(private val context: Context) {
             onDisconnected = { _ready.value = false; ha.onDisconnected() },
         ).also { it.start(scope) }
         advertiser = SatelliteAdvertiser(context, name, friendlyName, PORT, mac).also { it.register() }
+        // A change made in the app reaches HA too.
+        listenJob = scope.launch { ListenGate.paused(context).collect { sendListenState() } }
     }
 
     fun stop() {
+        listenJob?.cancel()
+        listenJob = null
         advertiser?.unregister()
         advertiser = null
         server?.stop()
@@ -128,8 +135,18 @@ class SatelliteDevice private constructor(private val context: Context) {
                 ),
             )
             MessageType.LIST_ENTITIES_REQUEST -> {
+                send(Outgoing.listSwitch(LISTEN_OBJECT_ID, LISTEN_KEY, LISTEN_NAME, LISTEN_ICON))
                 alarmActions.listMessages().forEach(::send)
                 send(Outgoing.empty(MessageType.LIST_ENTITIES_DONE_RESPONSE))
+            }
+            MessageType.SUBSCRIBE_STATES_REQUEST -> sendListenState()
+            MessageType.SWITCH_COMMAND_REQUEST -> {
+                val command = SwitchCommand.parse(message)
+                if (command.key == LISTEN_KEY) {
+                    Log.i(TAG, "HA switched wake word listening ${if (command.state) "on" else "off"}")
+                    ListenGate.setPaused(context, !command.state)
+                    sendListenState()
+                }
             }
             MessageType.EXECUTE_SERVICE_REQUEST -> alarmActions.execute(ExecuteService.parse(message))
             MessageType.PING_REQUEST -> send(Outgoing.empty(MessageType.PING_RESPONSE))
@@ -176,6 +193,11 @@ class SatelliteDevice private constructor(private val context: Context) {
         }
     }
 
+    /** On = listening for the wake word. */
+    private fun sendListenState() {
+        send(Outgoing.switchState(LISTEN_KEY, !ListenGate.paused(context).value))
+    }
+
     /** Tells HA an announcement (or a spoken reply) has finished playing. */
     fun announceFinished(success: Boolean) {
         announceWatchdog?.cancel()
@@ -199,6 +221,12 @@ class SatelliteDevice private constructor(private val context: Context) {
         private const val API_MINOR = 10
         private const val SERVER_INFO = "Bayit Voice"
         private const val MANUFACTURER = "Bayit Voice"
+
+        /** The "Wake word listening" switch; the English name keeps the entity id the same in every language. */
+        private const val LISTEN_OBJECT_ID = "wake_word_listening"
+        private const val LISTEN_NAME = "Wake word listening"
+        private const val LISTEN_ICON = "mdi:microphone"
+        private val LISTEN_KEY = "bayit.$LISTEN_OBJECT_ID".hashCode()
 
         /** An announcement still unanswered after this is reported to HA as failed. */
         private const val ANNOUNCE_TIMEOUT_MS = 120_000L

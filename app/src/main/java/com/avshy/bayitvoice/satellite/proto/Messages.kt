@@ -16,7 +16,11 @@ object MessageType {
     const val DEVICE_INFO_REQUEST = 9
     const val DEVICE_INFO_RESPONSE = 10
     const val LIST_ENTITIES_REQUEST = 11
+    const val LIST_ENTITIES_SWITCH_RESPONSE = 17
     const val LIST_ENTITIES_DONE_RESPONSE = 19
+    const val SUBSCRIBE_STATES_REQUEST = 20
+    const val SWITCH_STATE_RESPONSE = 26
+    const val SWITCH_COMMAND_REQUEST = 33
     const val LIST_ENTITIES_SERVICES_RESPONSE = 41
     const val EXECUTE_SERVICE_REQUEST = 42
     const val EXECUTE_SERVICE_RESPONSE = 131
@@ -227,6 +231,16 @@ data class ActionResponse(val callId: Int, val success: Boolean, val error: Stri
     }
 }
 
+/** `SwitchCommandRequest`: HA turns a switch entity on or off. */
+data class SwitchCommand(val key: Int, val state: Boolean) {
+    companion object {
+        fun parse(m: ApiMessage) = SwitchCommand(
+            key = m.fields.firstOrNull { it.field == 1 }?.int ?: 0,
+            state = m.fields.firstOrNull { it.field == 2 }?.bool ?: false,
+        )
+    }
+}
+
 // --- Messages this device sends ---
 
 object Outgoing {
@@ -308,6 +322,17 @@ object Outgoing {
             for ((key, value) in data) message(2, ProtoWriter().string(1, key).string(2, value))
             bool(5, true) // is_event
         }.toByteArray(),
+    )
+
+    /** Lists a switch entity; HA derives its entity id from [name]. */
+    fun listSwitch(objectId: String, key: Int, name: String, icon: String) = ApiMessage(
+        MessageType.LIST_ENTITIES_SWITCH_RESPONSE,
+        ProtoWriter().string(1, objectId).fixed32(2, key).string(3, name).string(5, icon).toByteArray(),
+    )
+
+    fun switchState(key: Int, state: Boolean) = ApiMessage(
+        MessageType.SWITCH_STATE_RESPONSE,
+        ProtoWriter().fixed32(1, key).bool(2, state).toByteArray(),
     )
 
     /** Lists one user-defined action; HA registers it as `esphome.<device name>_<name>`. */

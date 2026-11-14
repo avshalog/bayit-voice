@@ -42,6 +42,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -59,6 +61,7 @@ class WakeWordService : Service() {
     private var listening: Job? = null
     private var connection: Job? = null
     private var announcements: Job? = null
+    private var pauseNotice: Job? = null
     private var engine: WakeWordEngine? = null
     private var detector: WakeWordDetector? = null
     private var currentModelName: String? = null
@@ -160,8 +163,12 @@ class WakeWordService : Service() {
             if (BuildConfig.DEBUG) launch { logStats(newDetector) }
 
             // Listen only while no session owns the microphone.
-            MicArbiter.sessionActive.collectLatest { sessionActive ->
-                if (!sessionActive) capture(newEngine.frameSamples, newDetector)
+            // In satellite mode the HA switch can pause listening; the service itself keeps running.
+            val pausable = settings.assistLink == AssistLink.Satellite
+            combine(MicArbiter.sessionActive, ListenGate.paused(this@WakeWordService)) { sessionActive, paused ->
+                sessionActive || (pausable && paused)
+            }.distinctUntilChanged().collectLatest { blocked ->
+                if (!blocked) capture(newEngine.frameSamples, newDetector)
             }
         }
         val satellite = SatelliteDevice.get(this)
@@ -169,6 +176,10 @@ class WakeWordService : Service() {
             satellite.wakeWords = SatelliteWakeWords(this)
             satellite.start(scope)
             satellite.sendConfiguration()
+            pauseNotice?.cancel()
+            pauseNotice = scope.launch {
+                ListenGate.paused(this@WakeWordService).collect { currentModelName?.let(::updateNotification) }
+            }
             if (announcements == null) {
                 announcements = scope.launch {
                     satellite.announcements.collect { SessionLauncher.openAnnouncement(this@WakeWordService, it) }
@@ -245,7 +256,8 @@ class WakeWordService : Service() {
             .setSmallIcon(R.drawable.ic_mic)
             .setContentTitle(getString(R.string.notification_listening_title))
             .setContentText(
-                if (micSilenced) getString(R.string.notification_mic_busy)
+                if (isPaused()) getString(R.string.notification_listening_paused)
+                else if (micSilenced) getString(R.string.notification_mic_busy)
                 else modelName?.let { getString(R.string.notification_listening_text, it) }
             )
             .setContentIntent(open)
@@ -254,6 +266,9 @@ class WakeWordService : Service() {
             .setSilent(true)
             .build()
     }
+
+    private fun isPaused() =
+        AppSettings.get(this).assistLink == AssistLink.Satellite && ListenGate.paused(this).value
 
     private fun updateNotification(modelName: String) {
         currentModelName = modelName
