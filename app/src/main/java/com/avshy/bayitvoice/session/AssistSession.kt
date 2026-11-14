@@ -97,6 +97,7 @@ class AssistSession(
 
             var conversationId: String? = null
             var followUp = false
+            var followUps = 0
             // Hands-free turns (after a wake word or a follow-up question) end quietly on silence.
             var handsFree = fromWakeWord
             if (fromWakeWord && settings.chimeEnabled) Chime.play()
@@ -126,7 +127,10 @@ class AssistSession(
                         }
                     is TurnOutcome.Succeeded -> {
                         conversationId = turn.conversationId
-                        if (turn.continueConversation && allowContinue) {
+                        // Background speech (a TV, say) can keep a chain of follow-up questions going
+                        // forever; after a few in a row the session ends and the wake word starts anew.
+                        if (turn.continueConversation && allowContinue && followUps < MAX_FOLLOW_UPS) {
+                            followUps++
                             followUp = true
                             handsFree = true
                         } else {
@@ -733,6 +737,9 @@ class AssistSession(
         private const val RUN_TIMEOUT_MS = 60_000L
         private const val MANUAL_SILENCE_MS = 10_000L
         private const val HANDS_FREE_SILENCE_MS = 8_000L
+
+        /** Follow-up questions in a row before a session ends, so background speech cannot keep one going. */
+        private const val MAX_FOLLOW_UPS = 2
         private const val SPEECH_SAFETY_MS = 10_000L
 
         /** Arbitration happens this long after the wake word: it then also hears the command's start. */
