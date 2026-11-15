@@ -6,7 +6,7 @@ Bayit Voice listens for a wake word, streams your speech to Home Assistant's Ass
 
 It is a generic app: there are no built-in addresses, tokens, languages or device names. Everything comes from your own settings. The UI is in **English and Hebrew** (with full RTL support), and the speech language is whatever your Assist pipeline uses.
 
-> Status: version 0.2.0, a personal project made public. It works well on the devices it was built on (a Realme phone and a few others), but expect rough edges. Issues and pull requests are welcome.
+> Status: version 0.2.1, a personal project made public. It works well on the devices it was built on (a Realme phone and a few others), but expect rough edges. Issues and pull requests are welcome.
 
 [![Voice command, from wake word to reply](docs/media/poster-light.jpg)](docs/media/voice-light.mp4)
 
@@ -50,7 +50,7 @@ It is a generic app: there are no built-in addresses, tokens, languages or devic
 
 ## Install
 
-1. Download [`releases/bayit-voice-0.2.0.apk`](releases/bayit-voice-0.2.0.apk) to your Android device. It is also in the repository's **Releases** page when one is published.
+1. Download [`releases/bayit-voice-0.2.1.apk`](releases/bayit-voice-0.2.1.apk) to your Android device. It is also in the repository's **Releases** page when one is published.
 2. Open it. Android will ask you to allow installing apps from your browser or file manager. This is normal for an app that is not on Google Play.
 3. Open **Bayit Voice** and follow the [Quick start](#quick-start).
 
@@ -119,7 +119,7 @@ Hebrew niqqud (vowel points, often added to steer text-to-speech) is hidden in t
 - **Announcements** (`assist_satellite.announce`) with a pre-announce sound, and *start conversation*, where the device asks a question and then listens.
 - **Area awareness**: commands such as "turn off the light here" act on the device's area.
 - **A "Wake word listening" switch** appears in Home Assistant, so an automation can mute the microphone, for example on Shabbat or at night, and turn it back on later.
-- **A media player.** Turn on *Play music on this device* and Home Assistant gets a `media_player` for it. Play to it from Home Assistant or Music Assistant, and the sound comes out of whatever speaker the device is connected to. Music is lowered while you talk to the assistant, plays under announcements, and pauses while a timer or alarm rings. The idle screen shows it with play/pause and volume. Spotify should work through Music Assistant's Spotify Connect plugin (not tested yet).
+- **A media player.** Turn on *Play music from this device* and Home Assistant gets a `media_player` for it. Play to it from Home Assistant or Music Assistant, and the sound comes out of whatever speaker the device is connected to. Music is lowered while you talk to the assistant, plays under announcements, and pauses while a timer or alarm rings. The idle screen shows it with play/pause and volume. Spotify should work through Music Assistant's Spotify Connect plugin (not tested yet).
 - **Several wake words**: the device reports its installed models and Home Assistant chooses which one is active.
 
 ## The idle screen

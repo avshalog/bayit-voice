@@ -167,10 +167,9 @@
     <string name="idle_dream_label">שעון בית</string>
     <string name="settings_section_idle">מסך המתנה</string>
     <string name="settings_section_media">נגן מדיה</string>
-    <string name="idle_media_player_local">זה הנגן שבמכשיר הזה</string>
-    <string name="idle_media_player_local_help">להפעיל כשהנגן שלמעלה הוא זה שהמכשיר הזה מוסיף ל-Home Assistant. אז ניגון, השהיה ועוצמה פועלים ישירות על המכשיר. כדי לקבל גם שם שיר, עטיפה והבא/הקודם, בחרו את הגרסה של Music Assistant שלו.</string>
-    <string name="media_player_switch">נגן מוזיקה במכשיר הזה</string>
-    <string name="media_player_help">מוסיף נגן מדיה ל-Home Assistant, כך שאפשר לנגן מוזיקה במכשיר הזה מ-Home Assistant או מ-Music Assistant (Spotify דרך תוסף Spotify Connect של Music Assistant). הצליל יוצא לרמקול שמחובר למכשיר. Home Assistant מתחבר מחדש כשמשנים את ההגדרה.</string>
+    <string name="idle_media_player_local_help">המכשיר הזה הוא נגן מדיה, ולכן המסך מציג ושולט רק בניגון שלו עצמו ולא בנגנים אחרים. כדי להציג גם שם שיר ועטיפה, הזינו למעלה את הנגן של המכשיר הזה ב-Music Assistant; אחרת אפשר להשאיר ריק.</string>
+    <string name="media_player_switch">השמע מוזיקה ממכשיר זה</string>
+    <string name="media_player_help">Home Assistant ו-Music Assistant יוכלו לנגן מוזיקה דרך הרמקול של המכשיר הזה (Spotify דרך תוסף Spotify Connect ב-Music Assistant). הצליל יוצא לרמקול שמחובר למכשיר. כשזה דלוק, מסך ההמתנה מציג ושולט רק במוזיקה של המכשיר הזה. Home Assistant מתחבר מחדש כשמשנים את ההגדרה.</string>
     <string name="idle_help">שעון, תאריך ו(בקרוב) מזג אוויר, למכשיר שקבוע במקום אחד. אפשר להגדיר אותו כשומר המסך של המערכת, או לפתוח אותו ידנית.</string>
     <string name="idle_open">פתח מסך המתנה</string>
     <string name="idle_screensaver_settings">הגדרות שומר מסך</string>

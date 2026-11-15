@@ -50,16 +50,24 @@ class IdleMusic(context: Context) {
     private val device = SatelliteDevice.get(context)
     private val ha = device.ha
 
-    /** True when the chosen player is this device's own: play/pause and volume then act on it directly. */
-    private val local: Boolean get() = settings.localPlayerEnabled && settings.idleMediaPlayerLocal
+    /**
+     * True when this device is a media player itself (SPEC section 12). The idle screen then shows
+     * only its own playback, never another player's, and play/pause and volume act on it directly.
+     */
+    private val local: Boolean get() = settings.localPlayerEnabled
 
     val entityId: String? get() = settings.idleMediaPlayer
 
     /** Non-null while the player plays or is paused; null when it stops. */
     val now: Flow<NowPlaying?> = combine(ha.states, device.localMedia) { states, own ->
         val entity = entityId
+        // While this device is a player, the chosen entity only adds the title and artwork, and only
+        // while it plays too, so another player's track is never shown for this device's music.
+        val entityState = entity?.let { states[Key(it, "")] }
+        val metaOk = !local || entityState == "playing" || entityState == "paused"
         fun value(attribute: String = "") =
-            entity?.let { states[Key(it, attribute)] }?.takeIf { it.isNotEmpty() && it != "None" }
+            entity?.takeIf { attribute.isEmpty() || metaOk }?.let { states[Key(it, attribute)] }
+                ?.takeIf { it.isNotEmpty() && it != "None" }
         // Our own player knows its state and volume first-hand; HA only adds the title and artwork.
         val localState = own.state.takeIf { local && it != MediaState.IDLE && it != MediaState.NONE }
         val state = if (local) {
