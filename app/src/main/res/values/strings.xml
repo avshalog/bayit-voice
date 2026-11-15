@@ -170,6 +170,8 @@
     <string name="idle_dream_label">Bayit Voice clock</string>
     <string name="settings_section_idle">Idle screen</string>
     <string name="settings_section_media">Media player</string>
+    <string name="idle_media_player_local">This is the player on this device</string>
+    <string name="idle_media_player_local_help">Turn this on when the player above is the one this device adds to Home Assistant. Play, pause and volume then act on this device directly. Pick the Music Assistant version of it to also get the title, artwork and next/previous.</string>
     <string name="media_player_switch">Play music on this device</string>
     <string name="media_player_help">Adds a media player to Home Assistant, so you can play music on this device from Home Assistant or Music Assistant (Spotify through the Spotify Connect plugin in Music Assistant). The sound goes to whatever speaker this device is connected to. Home Assistant reconnects when you change this.</string>
     <string name="idle_help">A clock, the date and (soon) the weather, for a device that stays in one place. Use it as the system screen saver, or open it yourself.</string>

@@ -167,6 +167,8 @@
     <string name="idle_dream_label">שעון בית</string>
     <string name="settings_section_idle">מסך המתנה</string>
     <string name="settings_section_media">נגן מדיה</string>
+    <string name="idle_media_player_local">זה הנגן שבמכשיר הזה</string>
+    <string name="idle_media_player_local_help">להפעיל כשהנגן שלמעלה הוא זה שהמכשיר הזה מוסיף ל-Home Assistant. אז ניגון, השהיה ועוצמה פועלים ישירות על המכשיר. כדי לקבל גם שם שיר, עטיפה והבא/הקודם, בחרו את הגרסה של Music Assistant שלו.</string>
     <string name="media_player_switch">נגן מוזיקה במכשיר הזה</string>
     <string name="media_player_help">מוסיף נגן מדיה ל-Home Assistant, כך שאפשר לנגן מוזיקה במכשיר הזה מ-Home Assistant או מ-Music Assistant (Spotify דרך תוסף Spotify Connect של Music Assistant). הצליל יוצא לרמקול שמחובר למכשיר. Home Assistant מתחבר מחדש כשמשנים את ההגדרה.</string>
     <string name="idle_help">שעון, תאריך ו(בקרוב) מזג אוויר, למכשיר שקבוע במקום אחד. אפשר להגדיר אותו כשומר המסך של המערכת, או לפתוח אותו ידנית.</string>

@@ -89,6 +89,13 @@ class SatelliteDevice private constructor(private val context: Context) {
 
     /** This device's own media player (SPEC section 12); exists only while the setting is on. */
     private var mediaPlayer: LocalMediaPlayer? = null
+
+    /** The local player's state, volume and mute, for the idle screen (SPEC section 12). */
+    data class LocalMedia(val state: MediaState, val volume: Float, val muted: Boolean)
+
+    private val _localMedia = MutableStateFlow(LocalMedia(MediaState.IDLE, 0.5f, false))
+    val localMedia: StateFlow<LocalMedia> = _localMedia.asStateFlow()
+
     private var duckJobs: List<Job> = emptyList()
     private val duckLevels = HashMap<DuckSource, Float>()
 
@@ -233,6 +240,17 @@ class SatelliteDevice private constructor(private val context: Context) {
         synchronized(duckLevels) { duckLevels.forEach { (source, level) -> created.setDuck(source, level) } }
     }
 
+    /** The idle screen's play/pause button for this device's own player. */
+    fun togglePlayLocal() {
+        val p = mediaPlayer ?: return
+        if (p.state == MediaState.PLAYING) p.pause() else p.resume()
+    }
+
+    /** The idle screen's volume slider for this device's own player. */
+    fun setLocalVolume(level: Float) {
+        mediaPlayer?.setVolume(level)
+    }
+
     /** Remembers why the music is lowered, so a player created later starts at the right level. */
     private fun duck(source: DuckSource, level: Float) {
         synchronized(duckLevels) { if (level >= 1f) duckLevels.remove(source) else duckLevels[source] = level }
@@ -243,7 +261,11 @@ class SatelliteDevice private constructor(private val context: Context) {
     private fun sendMediaState() {
         if (!settings.localPlayerEnabled) return
         val p = mediaPlayer
-        send(Outgoing.mediaPlayerState(MEDIA_KEY, p?.state ?: MediaState.IDLE, p?.volume ?: 0.5f, p?.muted ?: false))
+        val state = p?.state ?: MediaState.IDLE
+        val volume = p?.volume ?: 0.5f
+        val muted = p?.muted ?: false
+        _localMedia.value = LocalMedia(state, volume, muted)
+        send(Outgoing.mediaPlayerState(MEDIA_KEY, state, volume, muted))
     }
 
     private fun handleMediaCommand(c: MediaPlayerCommand) {

@@ -119,6 +119,7 @@ Hebrew niqqud (vowel points, often added to steer text-to-speech) is hidden in t
 - **Announcements** (`assist_satellite.announce`) with a pre-announce sound, and *start conversation*, where the device asks a question and then listens.
 - **Area awareness**: commands such as "turn off the light here" act on the device's area.
 - **A "Wake word listening" switch** appears in Home Assistant, so an automation can mute the microphone, for example on Shabbat or at night, and turn it back on later.
+- **A media player.** Turn on *Play music on this device* and Home Assistant gets a `media_player` for it. Play to it from Home Assistant or Music Assistant, and the sound comes out of whatever speaker the device is connected to. Music is lowered while you talk to the assistant, plays under announcements, and pauses while a timer or alarm rings. The idle screen shows it with play/pause and volume. Spotify should work through Music Assistant's Spotify Connect plugin (not tested yet).
 - **Several wake words**: the device reports its installed models and Home Assistant chooses which one is active.
 
 ## The idle screen

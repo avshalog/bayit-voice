@@ -117,6 +117,16 @@ fun IdleSettings() {
         )
         Text(stringResource(R.string.idle_media_player_help), style = MaterialTheme.typography.bodySmall)
 
+        // Only when this device is a media player itself (SPEC section 12).
+        if (settings.localPlayerEnabled) {
+            var own by remember { mutableStateOf(settings.idleMediaPlayerLocal) }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.idle_media_player_local), modifier = Modifier.weight(1f))
+                Switch(checked = own, onCheckedChange = { own = it; settings.idleMediaPlayerLocal = it })
+            }
+            Text(stringResource(R.string.idle_media_player_local_help), style = MaterialTheme.typography.bodySmall)
+        }
+
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.idle_hebrew_date), modifier = Modifier.weight(1f))
             Switch(checked = hebrew, onCheckedChange = { hebrew = it; settings.idleHebrewDate = it })

@@ -201,6 +201,11 @@ class AppSettings private constructor(context: Context) {
         get() = prefs.getString(KEY_IDLE_WEATHER, null)?.takeIf { it.startsWith("weather.") }
         set(value) = prefs.edit { putString(KEY_IDLE_WEATHER, value?.trim()?.lowercase()) }
 
+    /** Idle screen: the media player chosen above is this device's own (SPEC section 12), so play/pause and volume act on it directly. */
+    var idleMediaPlayerLocal: Boolean
+        get() = prefs.getBoolean(KEY_IDLE_MEDIA_LOCAL, false)
+        set(value) = prefs.edit { putBoolean(KEY_IDLE_MEDIA_LOCAL, value) }
+
     /** Idle screen: the room's HA `media_player`, shown while it plays; null = no music card. */
     var idleMediaPlayer: String?
         get() = prefs.getString(KEY_IDLE_MEDIA_PLAYER, null)?.takeIf { it.startsWith("media_player.") }
@@ -286,6 +291,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_IDLE_NIGHT_SCREEN_OFF = "idle_night_screen_off"
         private const val KEY_IDLE_AUTO_START = "idle_auto_start"
         private const val KEY_LOCAL_PLAYER = "local_player_enabled"
+        private const val KEY_IDLE_MEDIA_LOCAL = "idle_media_player_local"
         private const val KEY_IDLE_WEATHER = "idle_weather_entity"
         private const val KEY_IDLE_MEDIA_PLAYER = "idle_media_player"
         private const val KEY_DEVICE_ALARMS = "device_alarms"

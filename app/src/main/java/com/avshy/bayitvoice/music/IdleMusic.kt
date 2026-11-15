@@ -8,8 +8,10 @@ import com.avshy.bayitvoice.config.AppSettings
 import com.avshy.bayitvoice.ha.HaClient
 import com.avshy.bayitvoice.satellite.HaLink.Key
 import com.avshy.bayitvoice.satellite.SatelliteDevice
+import com.avshy.bayitvoice.satellite.proto.MediaState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -45,16 +47,29 @@ data class NowPlaying(
 class IdleMusic(context: Context) {
 
     private val settings = AppSettings.get(context)
-    private val ha = SatelliteDevice.get(context).ha
+    private val device = SatelliteDevice.get(context)
+    private val ha = device.ha
+
+    /** True when the chosen player is this device's own: play/pause and volume then act on it directly. */
+    private val local: Boolean get() = settings.localPlayerEnabled && settings.idleMediaPlayerLocal
 
     val entityId: String? get() = settings.idleMediaPlayer
 
     /** Non-null while the player plays or is paused; null when it stops. */
-    val now: Flow<NowPlaying?> = ha.states.map { states ->
-        val entity = entityId ?: return@map null
-        fun value(attribute: String = "") = states[Key(entity, attribute)]?.takeIf { it.isNotEmpty() && it != "None" }
-        val state = value() ?: return@map null
-        if (state != "playing" && state != "paused") return@map null
+    val now: Flow<NowPlaying?> = combine(ha.states, device.localMedia) { states, own ->
+        val entity = entityId
+        fun value(attribute: String = "") =
+            entity?.let { states[Key(it, attribute)] }?.takeIf { it.isNotEmpty() && it != "None" }
+        // Our own player knows its state and volume first-hand; HA only adds the title and artwork.
+        val localState = own.state.takeIf { local && it != MediaState.IDLE && it != MediaState.NONE }
+        val state = if (local) {
+            if (localState == null) return@combine null
+            if (localState == MediaState.PAUSED) "paused" else "playing"
+        } else {
+            if (entity == null) return@combine null
+            value() ?: return@combine null
+        }
+        if (state != "playing" && state != "paused") return@combine null
         NowPlaying(
             playing = state == "playing",
             title = value("media_title"),
@@ -65,7 +80,7 @@ class IdleMusic(context: Context) {
                 // HA sends Python's str(datetime): "2026-11-09 18:30:00.123456+00:00".
                 runCatching { OffsetDateTime.parse(at.replace(' ', 'T')).toInstant().toEpochMilli() }.getOrNull()
             },
-            volume = value("volume_level")?.toDoubleOrNull(),
+            volume = if (local) (if (own.muted) 0.0 else own.volume.toDouble()) else value("volume_level")?.toDoubleOrNull(),
             artUrl = value("entity_picture")?.let(::absolute),
         )
     }
@@ -76,13 +91,14 @@ class IdleMusic(context: Context) {
         ha.want(OWNER, ATTRIBUTES.map { Key(entity, it) }.toSet())
     }
 
-    fun playPause() = command("media_player.media_play_pause")
+    fun playPause() = if (local) device.togglePlayLocal() else command("media_player.media_play_pause")
 
     fun next() = command("media_player.media_next_track")
 
     fun previous() = command("media_player.media_previous_track")
 
     fun setVolume(level: Double) {
+        if (local) return device.setLocalVolume(level.toFloat())
         val entity = entityId ?: return
         ha.fire("media_player.volume_set", mapOf("entity_id" to entity, "volume_level" to "%.2f".format(java.util.Locale.ROOT, level.coerceIn(0.0, 1.0))))
     }
