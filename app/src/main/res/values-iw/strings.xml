@@ -110,6 +110,13 @@
     <string name="notification_listening_title">מאזין למילת ההפעלה</string>
     <string name="notification_listening_text">מילת הפעלה: %1$s</string>
     <string name="notification_stop">עצור</string>
+    <string name="notification_pause">השהה</string>
+    <string name="notification_resume">המשך האזנה</string>
+    <string name="notification_paused_title">Bayit Voice — מושהה</string>
+    <string name="notification_paused_text">המיקרופון פנוי לאפליקציות אחרות.</string>
+    <string name="tile_label">Bayit Voice</string>
+    <string name="tile_listening">מאזין</string>
+    <string name="tile_paused">מושהה</string>
     <string name="notification_mic_busy">מושהה: אפליקציה אחרת משתמשת במיקרופון (למשל עוזר אחר עם מילת הפעלה).</string>
     <string name="notification_listening_paused">ההאזנה למילת ההפעלה מושהית. ההתקן נשאר מחובר ל-Home Assistant.</string>
     <string name="notification_session_title">מילת ההפעלה זוהתה</string>

@@ -187,6 +187,7 @@ When `continue_conversation == true`, for example a clarifying question or a con
 - Only one consumer owns the microphone at a time: either the wake-word engine or the pipeline stream.
 - Pause wake-word detection while TTS is playing, to avoid self-triggering.
 - Play a short chime when listening starts (wake word or follow-up).
+- Android gives the microphone to one capturing app at a time, and some apps (e.g. Samsung Voice Recorder) refuse to record while another app holds it. In both link modes the user can therefore pause wake-word listening, which releases the microphone completely until resumed (no automatic resume, so a recording is never cut off). Controls: a Pause / Resume action in the listening notification, a Quick Settings tile, and (satellite mode) the HA "Wake word listening" switch. The state is shared (`ListenGate`) and persists across restarts.
 
 ## 6. Wake word (Phase 2)
 

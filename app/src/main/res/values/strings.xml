@@ -112,6 +112,13 @@
     <string name="notification_listening_title">Listening for the wake word</string>
     <string name="notification_listening_text">Wake word: %1$s</string>
     <string name="notification_stop">Stop</string>
+    <string name="notification_pause">Pause</string>
+    <string name="notification_resume">Resume listening</string>
+    <string name="notification_paused_title">Bayit Voice — paused</string>
+    <string name="notification_paused_text">The microphone is free for other apps.</string>
+    <string name="tile_label">Bayit Voice</string>
+    <string name="tile_listening">Listening</string>
+    <string name="tile_paused">Paused</string>
     <string name="notification_mic_busy">Paused: another app is using the microphone (for example another assistant with a wake word).</string>
     <string name="notification_listening_paused">Wake word listening is paused. The device stays connected to Home Assistant.</string>
     <string name="notification_session_title">Wake word heard</string>

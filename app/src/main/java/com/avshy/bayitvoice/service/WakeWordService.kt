@@ -76,6 +76,11 @@ class WakeWordService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            // Pause releases the microphone for other apps (e.g. a voice recorder); resume takes it back.
+            ACTION_PAUSE, ACTION_RESUME -> {
+                ListenGate.setPaused(this, intent.action == ACTION_PAUSE)
+                return START_NOT_STICKY
+            }
             ACTION_RELOAD -> if (listening != null) {
                 restart()
                 return START_NOT_STICKY
@@ -112,6 +117,7 @@ class WakeWordService : Service() {
         scope.cancel()
         engine?.close()
         isRunning = false
+        ListenTile.refresh(this)
         super.onDestroy()
     }
 
@@ -162,13 +168,20 @@ class WakeWordService : Service() {
             Log.i(TAG, "Listening for '${model.name}' (threshold ${settings.wakeThreshold})")
             if (BuildConfig.DEBUG) launch { logStats(newDetector) }
 
-            // Listen only while no session owns the microphone.
-            // In satellite mode the HA switch can pause listening; the service itself keeps running.
-            val pausable = settings.assistLink == AssistLink.Satellite
+            // Listen only while no session owns the microphone and listening is not paused.
+            // Paused (notification, tile or the HA switch), the microphone is released for other apps;
+            // the service itself keeps running.
             combine(MicArbiter.sessionActive, ListenGate.paused(this@WakeWordService)) { sessionActive, paused ->
-                sessionActive || (pausable && paused)
+                sessionActive || paused
             }.distinctUntilChanged().collectLatest { blocked ->
                 if (!blocked) capture(newEngine.frameSamples, newDetector)
+            }
+        }
+        pauseNotice?.cancel()
+        pauseNotice = scope.launch {
+            ListenGate.paused(this@WakeWordService).collect {
+                currentModelName?.let(::updateNotification)
+                ListenTile.refresh(this@WakeWordService)
             }
         }
         val satellite = SatelliteDevice.get(this)
@@ -176,10 +189,6 @@ class WakeWordService : Service() {
             satellite.wakeWords = SatelliteWakeWords(this)
             satellite.start(scope)
             satellite.sendConfiguration()
-            pauseNotice?.cancel()
-            pauseNotice = scope.launch {
-                ListenGate.paused(this@WakeWordService).collect { currentModelName?.let(::updateNotification) }
-            }
             if (announcements == null) {
                 announcements = scope.launch {
                     satellite.announcements.collect { SessionLauncher.openAnnouncement(this@WakeWordService, it) }
@@ -252,23 +261,29 @@ class WakeWordService : Service() {
         val stop = PendingIntent.getService(
             this, 1, Intent(this, WakeWordService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE,
         )
+        val paused = isPaused()
+        val toggle = PendingIntent.getService(
+            this, 2, Intent(this, WakeWordService::class.java).setAction(if (paused) ACTION_RESUME else ACTION_PAUSE),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+        val satellite = AppSettings.get(this).assistLink == AssistLink.Satellite
         return NotificationCompat.Builder(this, Notifications.CHANNEL_LISTENING)
             .setSmallIcon(R.drawable.ic_mic)
-            .setContentTitle(getString(R.string.notification_listening_title))
+            .setContentTitle(getString(if (paused) R.string.notification_paused_title else R.string.notification_listening_title))
             .setContentText(
-                if (isPaused()) getString(R.string.notification_listening_paused)
+                if (paused) getString(if (satellite) R.string.notification_listening_paused else R.string.notification_paused_text)
                 else if (micSilenced) getString(R.string.notification_mic_busy)
                 else modelName?.let { getString(R.string.notification_listening_text, it) }
             )
             .setContentIntent(open)
+            .addAction(0, getString(if (paused) R.string.notification_resume else R.string.notification_pause), toggle)
             .addAction(0, getString(R.string.notification_stop), stop)
             .setOngoing(true)
             .setSilent(true)
             .build()
     }
 
-    private fun isPaused() =
-        AppSettings.get(this).assistLink == AssistLink.Satellite && ListenGate.paused(this).value
+    private fun isPaused() = ListenGate.paused(this).value
 
     private fun updateNotification(modelName: String) {
         currentModelName = modelName
@@ -329,6 +344,8 @@ class WakeWordService : Service() {
         private const val REMINDER_EVENT = "esphome.bayit_reminder"
         private const val ACTION_STOP = "stop"
         private const val ACTION_RELOAD = "reload"
+        private const val ACTION_PAUSE = "pause"
+        private const val ACTION_RESUME = "resume"
         private const val ACTION_DEBUG_DETECT = "debug_detect"
         private const val ACTION_DEBUG_LINK = "debug_link"
         private const val ACTION_DEBUG_TIMER = "debug_timer"
