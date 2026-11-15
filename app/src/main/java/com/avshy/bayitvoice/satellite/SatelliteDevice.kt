@@ -10,6 +10,11 @@ import com.avshy.bayitvoice.satellite.proto.HomeAssistantState
 import com.avshy.bayitvoice.satellite.proto.ApiMessage
 import com.avshy.bayitvoice.satellite.proto.ExecuteService
 import com.avshy.bayitvoice.satellite.proto.HelloRequest
+import com.avshy.bayitvoice.music.LocalMediaPlayer
+import com.avshy.bayitvoice.satellite.proto.MediaCommand
+import com.avshy.bayitvoice.satellite.proto.MediaFeature
+import com.avshy.bayitvoice.satellite.proto.MediaPlayerCommand
+import com.avshy.bayitvoice.satellite.proto.MediaState
 import com.avshy.bayitvoice.satellite.proto.MessageType
 import com.avshy.bayitvoice.satellite.proto.Outgoing
 import com.avshy.bayitvoice.satellite.proto.SetConfiguration
@@ -79,6 +84,9 @@ class SatelliteDevice private constructor(private val context: Context) {
     /** Alarms and reminders HA sets on this device (SPEC section 10.1). */
     private val alarmActions = AlarmActions(context, ::send)
 
+    /** This device's own media player (SPEC section 12); exists only while the setting is on. */
+    private var mediaPlayer: LocalMediaPlayer? = null
+
     val name: String get() = "bayit-voice-" + settings.satelliteMac.takeLast(6)
 
     val friendlyName: String get() = settings.deviceName ?: Build.MODEL
@@ -108,7 +116,18 @@ class SatelliteDevice private constructor(private val context: Context) {
         advertiser = null
         server?.stop()
         server = null
+        mediaPlayer?.shutdown()
+        mediaPlayer = null
         _ready.value = false
+    }
+
+    /** The media-player setting changed: HA reconnects and lists the entities again. */
+    fun onMediaPlayerSettingChanged() {
+        if (!settings.localPlayerEnabled) {
+            mediaPlayer?.shutdown()
+            mediaPlayer = null
+        }
+        server?.dropConnection()
     }
 
     fun send(message: ApiMessage): Boolean = server?.send(message) ?: false
@@ -136,10 +155,14 @@ class SatelliteDevice private constructor(private val context: Context) {
             )
             MessageType.LIST_ENTITIES_REQUEST -> {
                 send(Outgoing.listSwitch(LISTEN_OBJECT_ID, LISTEN_KEY, LISTEN_NAME, LISTEN_ICON))
+                if (settings.localPlayerEnabled) send(
+                    Outgoing.listMediaPlayer(MEDIA_OBJECT_ID, MEDIA_KEY, MEDIA_NAME, MEDIA_ICON, MEDIA_FEATURES, MEDIA_FORMATS),
+                )
                 alarmActions.listMessages().forEach(::send)
                 send(Outgoing.empty(MessageType.LIST_ENTITIES_DONE_RESPONSE))
             }
-            MessageType.SUBSCRIBE_STATES_REQUEST -> sendListenState()
+            MessageType.SUBSCRIBE_STATES_REQUEST -> { sendListenState(); sendMediaState() }
+            MessageType.MEDIA_PLAYER_COMMAND_REQUEST -> handleMediaCommand(MediaPlayerCommand.parse(message))
             MessageType.SWITCH_COMMAND_REQUEST -> {
                 val command = SwitchCommand.parse(message)
                 if (command.key == LISTEN_KEY) {
@@ -193,6 +216,35 @@ class SatelliteDevice private constructor(private val context: Context) {
         }
     }
 
+    private fun player(): LocalMediaPlayer =
+        mediaPlayer ?: LocalMediaPlayer(context, ::sendMediaState).also { mediaPlayer = it }
+
+    /** Reports the media player's state, volume and mute to HA; nothing while the feature is off. */
+    private fun sendMediaState() {
+        if (!settings.localPlayerEnabled) return
+        val p = mediaPlayer
+        send(Outgoing.mediaPlayerState(MEDIA_KEY, p?.state ?: MediaState.IDLE, p?.volume ?: 0.5f, p?.muted ?: false))
+    }
+
+    private fun handleMediaCommand(c: MediaPlayerCommand) {
+        if (c.key != MEDIA_KEY || !settings.localPlayerEnabled) return
+        Log.i(TAG, "Media command ${c.command} volume=${c.volume} url=${c.mediaUrl != null}")
+        val p = player()
+        c.volume?.let { p.setVolume(it) }
+        c.mediaUrl?.takeIf { it.isNotEmpty() }?.let { p.play(it) }
+        when (c.command) {
+            MediaCommand.PLAY -> p.resume()
+            MediaCommand.PAUSE -> p.pause()
+            MediaCommand.STOP -> p.stop()
+            MediaCommand.MUTE -> p.setMuted(true)
+            MediaCommand.UNMUTE -> p.setMuted(false)
+            MediaCommand.TOGGLE -> if (p.state == MediaState.PLAYING) p.pause() else p.resume()
+            MediaCommand.VOLUME_UP -> p.setVolume(p.volume + VOLUME_STEP)
+            MediaCommand.VOLUME_DOWN -> p.setVolume(p.volume - VOLUME_STEP)
+            null -> Unit
+        }
+    }
+
     /** On = listening for the wake word. */
     private fun sendListenState() {
         send(Outgoing.switchState(LISTEN_KEY, !ListenGate.paused(context).value))
@@ -227,6 +279,21 @@ class SatelliteDevice private constructor(private val context: Context) {
         private const val LISTEN_NAME = "Wake word listening"
         private const val LISTEN_ICON = "mdi:microphone"
         private val LISTEN_KEY = "bayit.$LISTEN_OBJECT_ID".hashCode()
+
+        /** The media player entity (object id fixed in English so the entity id is the same in every language). */
+        private const val MEDIA_OBJECT_ID = "media_player"
+        private const val MEDIA_NAME = "Media player"
+        private const val MEDIA_ICON = "mdi:speaker"
+        private val MEDIA_KEY = "bayit.$MEDIA_OBJECT_ID".hashCode()
+        private const val MEDIA_FEATURES = MediaFeature.PAUSE or MediaFeature.PLAY or MediaFeature.STOP or
+            MediaFeature.VOLUME_SET or MediaFeature.VOLUME_MUTE or MediaFeature.PLAY_MEDIA or MediaFeature.MEDIA_ANNOUNCE
+        private const val VOLUME_STEP = 0.1f
+
+        /** What HA's proxy converts media to before sending it; ExoPlayer decodes FLAC natively. */
+        private val MEDIA_FORMATS = listOf(
+            Outgoing.MediaFormat("flac", 48000, 2, announcement = false),
+            Outgoing.MediaFormat("flac", 16000, 1, announcement = true),
+        )
 
         /** An announcement still unanswered after this is reported to HA as failed. */
         private const val ANNOUNCE_TIMEOUT_MS = 120_000L

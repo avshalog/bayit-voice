@@ -253,6 +253,9 @@ private fun SettingsScreen(
                 HorizontalDivider()
                 SectionTitle(R.string.settings_section_idle)
                 IdleSettings()
+                HorizontalDivider()
+                SectionTitle(R.string.settings_section_media)
+                MediaPlayerSettings()
             }
 
             HorizontalDivider()

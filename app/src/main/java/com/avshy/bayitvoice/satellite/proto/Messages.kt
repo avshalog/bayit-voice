@@ -18,6 +18,9 @@ object MessageType {
     const val LIST_ENTITIES_REQUEST = 11
     const val LIST_ENTITIES_SWITCH_RESPONSE = 17
     const val LIST_ENTITIES_DONE_RESPONSE = 19
+    const val LIST_ENTITIES_MEDIA_PLAYER_RESPONSE = 63
+    const val MEDIA_PLAYER_STATE_RESPONSE = 64
+    const val MEDIA_PLAYER_COMMAND_REQUEST = 65
     const val SUBSCRIBE_STATES_REQUEST = 20
     const val SWITCH_STATE_RESPONSE = 26
     const val SWITCH_COMMAND_REQUEST = 33
@@ -41,6 +44,29 @@ object MessageType {
     const val VOICE_ASSISTANT_CONFIGURATION_REQUEST = 121
     const val VOICE_ASSISTANT_CONFIGURATION_RESPONSE = 122
     const val VOICE_ASSISTANT_SET_CONFIGURATION = 123
+}
+
+/** `MediaPlayerEntityFeature` bit flags (the same values as Home Assistant's). */
+object MediaFeature {
+    const val PAUSE = 1 shl 0
+    const val VOLUME_SET = 1 shl 2
+    const val VOLUME_MUTE = 1 shl 3
+    const val PLAY_MEDIA = 1 shl 9
+    const val STOP = 1 shl 12
+    const val PLAY = 1 shl 14
+    const val MEDIA_ANNOUNCE = 1 shl 20
+}
+
+/** `MediaPlayerState`. */
+enum class MediaState(val code: Int) { NONE(0), IDLE(1), PLAYING(2), PAUSED(3), ANNOUNCING(4) }
+
+/** `MediaPlayerCommand`, the ones this device acts on. */
+enum class MediaCommand(val code: Int) {
+    PLAY(0), PAUSE(1), STOP(2), MUTE(3), UNMUTE(4), TOGGLE(5), VOLUME_UP(6), VOLUME_DOWN(7);
+
+    companion object {
+        fun of(code: Int): MediaCommand? = entries.firstOrNull { it.code == code }
+    }
 }
 
 /** `VoiceAssistantFeature` bit flags reported in the device info. */
@@ -241,6 +267,29 @@ data class SwitchCommand(val key: Int, val state: Boolean) {
     }
 }
 
+/** `MediaPlayerCommandRequest`: HA controls the media player entity; unset parts are null. */
+data class MediaPlayerCommand(
+    val key: Int,
+    val command: MediaCommand?,
+    val volume: Float?,
+    val mediaUrl: String?,
+    val announcement: Boolean,
+) {
+    companion object {
+        fun parse(m: ApiMessage): MediaPlayerCommand {
+            val f = m.fields
+            fun has(flag: Int) = f.firstOrNull { it.field == flag }?.bool ?: false
+            return MediaPlayerCommand(
+                key = f.firstOrNull { it.field == 1 }?.number?.toInt() ?: 0,
+                command = if (has(2)) MediaCommand.of(f.firstOrNull { it.field == 3 }?.int ?: 0) else null,
+                volume = if (has(4)) Float.fromBits(f.firstOrNull { it.field == 5 }?.number?.toInt() ?: 0) else null,
+                mediaUrl = if (has(6)) f.firstOrNull { it.field == 7 }?.string.orEmpty() else null,
+                announcement = has(8) && (f.firstOrNull { it.field == 9 }?.bool ?: false),
+            )
+        }
+    }
+}
+
 // --- Messages this device sends ---
 
 object Outgoing {
@@ -333,6 +382,28 @@ object Outgoing {
     fun switchState(key: Int, state: Boolean) = ApiMessage(
         MessageType.SWITCH_STATE_RESPONSE,
         ProtoWriter().fixed32(1, key).bool(2, state).toByteArray(),
+    )
+
+    /** One audio format the media player entity accepts; HA converts anything else. */
+    class MediaFormat(val format: String, val sampleRate: Int, val channels: Int, val announcement: Boolean)
+
+    /** Lists the media player entity; HA derives its entity id from [name]. */
+    fun listMediaPlayer(objectId: String, key: Int, name: String, icon: String, features: Int, formats: List<MediaFormat>) = ApiMessage(
+        MessageType.LIST_ENTITIES_MEDIA_PLAYER_RESPONSE,
+        ProtoWriter().apply {
+            string(1, objectId).fixed32(2, key).string(3, name).string(5, icon)
+            bool(8, true) // supports_pause, for HA versions that ignore feature_flags
+            for (f in formats) {
+                message(9, ProtoWriter().string(1, f.format).uint32(2, f.sampleRate).uint32(3, f.channels)
+                    .uint32(4, if (f.announcement) 1 else 0))
+            }
+            uint32(11, features)
+        }.toByteArray(),
+    )
+
+    fun mediaPlayerState(key: Int, state: MediaState, volume: Float, muted: Boolean) = ApiMessage(
+        MessageType.MEDIA_PLAYER_STATE_RESPONSE,
+        ProtoWriter().fixed32(1, key).uint32(2, state.code).fixed32(3, volume.toRawBits()).bool(4, muted).toByteArray(),
     )
 
     /** Lists one user-defined action; HA registers it as `esphome.<device name>_<name>`. */

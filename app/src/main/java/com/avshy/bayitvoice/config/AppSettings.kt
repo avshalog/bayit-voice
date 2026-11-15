@@ -187,6 +187,11 @@ class AppSettings private constructor(context: Context) {
         set(value) = prefs.edit { putBoolean(KEY_IDLE_NIGHT_SCREEN_OFF, value) }
 
     /** Idle screen: open it by itself while charging (for systems without Android's screen saver). */
+    /** Satellite mode: this device is also a media player in HA (SPEC section 12). Off by default. */
+    var localPlayerEnabled: Boolean
+        get() = prefs.getBoolean(KEY_LOCAL_PLAYER, false)
+        set(value) = prefs.edit { putBoolean(KEY_LOCAL_PLAYER, value) }
+
     var idleAutoStart: Boolean
         get() = prefs.getBoolean(KEY_IDLE_AUTO_START, false)
         set(value) = prefs.edit { putBoolean(KEY_IDLE_AUTO_START, value) }
@@ -280,6 +285,7 @@ class AppSettings private constructor(context: Context) {
         private const val KEY_IDLE_DAY_BRIGHTNESS = "idle_day_brightness"
         private const val KEY_IDLE_NIGHT_SCREEN_OFF = "idle_night_screen_off"
         private const val KEY_IDLE_AUTO_START = "idle_auto_start"
+        private const val KEY_LOCAL_PLAYER = "local_player_enabled"
         private const val KEY_IDLE_WEATHER = "idle_weather_entity"
         private const val KEY_IDLE_MEDIA_PLAYER = "idle_media_player"
         private const val KEY_DEVICE_ALARMS = "device_alarms"

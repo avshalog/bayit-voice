@@ -124,7 +124,7 @@ class WakeWordService : Service() {
     /** Must run while the app is visible: Android forbids starting microphone services from the background. */
     private fun goForeground(): Boolean = try {
         Notifications.ensureChannels(this)
-        ServiceCompat.startForeground(this, Notifications.ID_LISTENING, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        ServiceCompat.startForeground(this, Notifications.ID_LISTENING, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
         isRunning = true
         true
     } catch (e: Exception) {

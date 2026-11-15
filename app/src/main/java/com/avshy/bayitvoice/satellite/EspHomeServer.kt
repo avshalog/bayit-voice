@@ -78,6 +78,11 @@ class EspHomeServer(
         current = null
     }
 
+    /** Closes HA's connection so it reconnects and lists the entities again. */
+    fun dropConnection() {
+        current?.close()
+    }
+
     /** Queues [message] for HA; false when HA is not connected. Never blocks. */
     fun send(message: ApiMessage): Boolean {
         if (current == null) return false

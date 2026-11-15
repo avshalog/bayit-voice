@@ -76,6 +76,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.litert)
+    // Plays the music HA and Music Assistant send to this device (SPEC section 12).
+    implementation(libs.androidx.media3.exoplayer)
     // X25519 and ChaCha20-Poly1305 for the ESPHome API's Noise encryption (the platform has no X25519 below API 31).
     implementation(libs.bouncycastle)
     debugImplementation(libs.androidx.compose.ui.tooling)
