@@ -233,13 +233,13 @@ Bayit Voice stands on the shoulders of other open-source projects. Thank you to 
 - **[Piper sample generator](https://github.com/rhasspy/piper-sample-generator)** (Rhasspy / Open Home Foundation): the synthetic speech used to train wake words.
 - **[Linux Voice Assistant](https://github.com/OHF-Voice/linux-voice-assistant)** and **[Wyoming](https://github.com/OHF-Voice/wyoming)** (Open Home Foundation): the reference for how a modern Home Assistant satellite behaves, and the reason we chose the ESPHome protocol.
 - **[aioesphomeapi](https://github.com/esphome/aioesphomeapi)** and **[ESPHome](https://esphome.io)**: the native API definition (`api.proto`) that our satellite implements.
-- **[thinking-orbs](https://github.com/Jakubantalik/Libraries.dev)** by Jakub Antalik: the animated orb geometry.
+- **[thinking-orbs](https://libraries.dev/orbs)** by Jakub Antalik, part of [Libraries.dev](https://github.com/Jakubantalik/Libraries.dev) (MIT): the animated orbs (the connecting, listening, thinking and speaking orbs in the conversation screens). We ported the geometry to Jetpack Compose.
 - **[Home Assistant](https://www.home-assistant.io)**, **[Music Assistant](https://music-assistant.io)** and the **[Noise Protocol Framework](https://noiseprotocol.org)**, which this app is built around or uses.
 
 ## Licenses and credits
 
 - **The built-in wake-word models** and the openWakeWord feature models (melspectrogram, embedding) are by David Scripka ([openWakeWord](https://github.com/dscripka/openWakeWord)) and are licensed under **CC BY-NC-SA 4.0**. They **may not be used commercially**. The *Hey Bayit* model is trained on the same openWakeWord data, so the same terms apply to it. The openWakeWord code is Apache 2.0.
-- The animated orbs are based on [thinking-orbs](https://github.com/Jakubantalik/Libraries.dev) by Jakub Antalik (MIT).
+- The animated orbs are based on [thinking-orbs](https://libraries.dev/orbs) by Jakub Antalik (MIT).
 - The ESPHome native API messages come from [aioesphomeapi](https://github.com/esphome/aioesphomeapi) (MIT).
 - Libraries: LiteRT (TensorFlow Lite), OkHttp, AndroidX, Jetpack Compose, Kotlin coroutines (Apache 2.0) and BouncyCastle (MIT).
 - Home Assistant and ESPHome are trademarks of their owners. This project is not affiliated with them.
