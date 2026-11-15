@@ -411,3 +411,28 @@ The idle screen exists in **satellite mode only**. In direct mode the app is unc
   - Music started in the room appears within 2 s, and its controls work.
   - Night mode switches on and off at the set hours.
   - CPU use while the idle screen is visible stays within an agreed budget (measured, then recorded here).
+
+## 12. Local media player (Phase 4, satellite only) — PROPOSED, not approved, nothing built
+
+People who fix a device in a room expect it to play music, as a Nest Hub or Echo does. Today the idle screen only shows and controls a *different* device's `media_player` (section 11). This section makes the satellite a media player itself. It is for **satellite mode only** (section 10: the device is a home speaker); direct mode is unchanged.
+
+- **Entity.** The device lists one ESPHome `media_player` entity (`ListEntitiesMediaPlayerResponse`, id 63; state `MediaPlayerStateResponse` 64; commands `MediaPlayerCommandRequest` 65, from `api.proto`, to be re-verified against `aioesphomeapi` before coding). HA shows it as `media_player.<device>`. Music Assistant (MA) lists it as a player, so MA's own library, radio and the Spotify Connect plugin (if present in the user's MA version; verify) can play on it. No MA or Spotify code lives in the app.
+- **What HA sends.** A media URL to play (`media_url`, with `announcement` true for TTS and announcements), and play / pause / stop / mute / unmute / volume. The app reports state (idle, playing, paused, announcing), volume and mute on every change and on subscribe.
+- **Formats.** The entity advertises the formats Android decodes natively (FLAC, MP3, WAV, AAC at 44.1 / 48 kHz stereo for music; WAV or MP3, 16 kHz mono, for announcements) so HA's proxy converts anything else. The exact list and the HA-side behaviour are verified in stage 2.
+- **Playback.** Media3 `ExoPlayer`, created only when playback starts and released after about a minute idle, so the listening service stays light (section 7). The service's foreground type gains `mediaPlayback` beside `microphone` (new permission `FOREGROUND_SERVICE_MEDIA_PLAYBACK`). The app plays on whatever output Android has chosen (the phone's speaker, a wired or USB speaker, Bluetooth), so a "speaker" needs no app code. Volume is the player's own gain, so the system's volume settings are never changed.
+- **Ducking.** On a wake word, a conversation, a TTS reply, an announcement, a ringing timer or alarm, music is lowered to about 20% (or paused when the sound is a ringing alarm) and restored when the sound ends, with a short fade. An announcement (`announcement` true) plays over the music, which is lowered meanwhile. Android audio focus is requested and honoured, so a call or another app pauses it too.
+- **Echo, the hard part.** The microphone hears the device's own music. Before building the rest, a short spike measures wake-word detection with music playing (phone speaker, then a real speaker) using these options in order, keeping the simplest that passes the acceptance below: (1) the `VOICE_COMMUNICATION` capture source with Android's `AcousticEchoCanceler`, when the device has one; (2) `MODE_IN_COMMUNICATION` during playback; (3) a higher wake-word threshold only while music plays. Tested on the Realme 6 Pro and the Galaxy S21 FE. This stage needs the external speaker, so it comes last in the order of work; the other stages can be built and tested on the phone's own speaker.
+- **Idle screen.** Section 11's music card also works for the device's own player, with controls going straight to the local player (no HA round trip, and no "Allow actions" option needed). ESPHome's media state has no title, artist or artwork. Those still come from HA's state of the entity the user chose in settings (`weather`/`media_player` pickers), as today; the settings offer the device's own entity as the first suggestion once HA has registered it.
+- **Settings** (satellite mode): "Play media on this device", off by default; nothing changes for anyone who leaves it off. While it is off the entity is not listed.
+- **Later, optional (stage 5): a Sendspin client.** Music Assistant's native Sendspin protocol keeps several rooms in time with each other, which the ESPHome media player cannot. A Sendspin player inside the app would give synchronised multi-room playback with other Sendspin players. It is a separate decision after stages 1 to 4 are used for real.
+- **Stages,** each checked on a device before the next:
+  1. Echo spike with music (needs the external speaker; can run last).
+  2. The entity: play a URL, pause, stop, volume, mute; state reported to HA. Test: play a file from HA, and from MA.
+  3. Ducking and announcements over music; wake word, replies, timers and alarms with music playing.
+  4. Settings, idle-screen integration, resource check (no cost while off or idle).
+  5. Optional Sendspin client.
+- **Acceptance:**
+  - From HA and from MA, playing to the device works, and pause, stop and volume work and are reported back.
+  - Music is lowered for the wake word, the reply and a ringing timer, and returns afterwards.
+  - With music at a normal listening level, the wake word works from about 2 m in 9 of 10 tries.
+  - With the setting off, the service's CPU and memory are unchanged from today.
