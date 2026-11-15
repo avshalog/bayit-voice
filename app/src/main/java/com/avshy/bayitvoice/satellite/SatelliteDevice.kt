@@ -10,6 +10,9 @@ import com.avshy.bayitvoice.satellite.proto.HomeAssistantState
 import com.avshy.bayitvoice.satellite.proto.ApiMessage
 import com.avshy.bayitvoice.satellite.proto.ExecuteService
 import com.avshy.bayitvoice.satellite.proto.HelloRequest
+import com.avshy.bayitvoice.audio.AlarmSound
+import com.avshy.bayitvoice.audio.MicArbiter
+import com.avshy.bayitvoice.music.DuckSource
 import com.avshy.bayitvoice.music.LocalMediaPlayer
 import com.avshy.bayitvoice.satellite.proto.MediaCommand
 import com.avshy.bayitvoice.satellite.proto.MediaFeature
@@ -86,6 +89,8 @@ class SatelliteDevice private constructor(private val context: Context) {
 
     /** This device's own media player (SPEC section 12); exists only while the setting is on. */
     private var mediaPlayer: LocalMediaPlayer? = null
+    private var duckJobs: List<Job> = emptyList()
+    private val duckLevels = HashMap<DuckSource, Float>()
 
     val name: String get() = "bayit-voice-" + settings.satelliteMac.takeLast(6)
 
@@ -107,11 +112,18 @@ class SatelliteDevice private constructor(private val context: Context) {
         advertiser = SatelliteAdvertiser(context, name, friendlyName, PORT, mac).also { it.register() }
         // A change made in the app reaches HA too.
         listenJob = scope.launch { ListenGate.paused(context).collect { sendListenState() } }
+        // The music gives way to a conversation, and pauses while an alarm rings (SPEC section 12).
+        duckJobs = listOf(
+            scope.launch { MicArbiter.sessionActive.collect { duck(DuckSource.SESSION, if (it) LocalMediaPlayer.SESSION_LEVEL else 1f) } },
+            scope.launch { AlarmSound.ringing.collect { duck(DuckSource.ALARM, if (it) 0f else 1f) } },
+        )
     }
 
     fun stop() {
         listenJob?.cancel()
         listenJob = null
+        duckJobs.forEach { it.cancel() }
+        duckJobs = emptyList()
         advertiser?.unregister()
         advertiser = null
         server?.stop()
@@ -216,8 +228,16 @@ class SatelliteDevice private constructor(private val context: Context) {
         }
     }
 
-    private fun player(): LocalMediaPlayer =
-        mediaPlayer ?: LocalMediaPlayer(context, ::sendMediaState).also { mediaPlayer = it }
+    private fun player(): LocalMediaPlayer = mediaPlayer ?: LocalMediaPlayer(context, ::sendMediaState).also { created ->
+        mediaPlayer = created
+        synchronized(duckLevels) { duckLevels.forEach { (source, level) -> created.setDuck(source, level) } }
+    }
+
+    /** Remembers why the music is lowered, so a player created later starts at the right level. */
+    private fun duck(source: DuckSource, level: Float) {
+        synchronized(duckLevels) { if (level >= 1f) duckLevels.remove(source) else duckLevels[source] = level }
+        mediaPlayer?.setDuck(source, level)
+    }
 
     /** Reports the media player's state, volume and mute to HA; nothing while the feature is off. */
     private fun sendMediaState() {
@@ -231,7 +251,7 @@ class SatelliteDevice private constructor(private val context: Context) {
         Log.i(TAG, "Media command ${c.command} volume=${c.volume} url=${c.mediaUrl != null}")
         val p = player()
         c.volume?.let { p.setVolume(it) }
-        c.mediaUrl?.takeIf { it.isNotEmpty() }?.let { p.play(it) }
+        c.mediaUrl?.takeIf { it.isNotEmpty() }?.let { if (c.announcement) p.announce(it) else p.play(it) }
         when (c.command) {
             MediaCommand.PLAY -> p.resume()
             MediaCommand.PAUSE -> p.pause()

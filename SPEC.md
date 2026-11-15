@@ -428,7 +428,7 @@ People who fix a device in a room expect it to play music, as a Nest Hub or Echo
 - **Stages,** each checked on a device before the next:
   1. Echo spike with music (needs the external speaker; can run last).
   2. The entity: play a URL, pause, stop, volume, mute; state reported to HA. **Done and verified 2026-11-15** on the Realme from HA (`tts.speak`, `media_player.volume_set`, pause, play, stop; HA shows playing, paused and idle). Not yet tried from Music Assistant, which does not list the new player until its Home Assistant player provider is enabled.
-  3. Ducking and announcements over music; wake word, replies, timers and alarms with music playing.
+  3. Ducking and announcements over music; wake word, replies, timers and alarms with music playing. **Done and verified 2026-11-15** on the Realme: the music drops to 20% while a conversation is open (wake word to session end) and returns; an announcement sent by HA (`announce`) plays on its own player over the music, which is lowered meanwhile; a ringing timer or alarm pauses the music and it resumes when the ringing stops. Levels fade over about 0.2 s. Wake-word detection with music playing is stage 1 (needs the external speaker).
   4. Settings, idle-screen integration, resource check (no cost while off or idle).
   5. Optional Sendspin client.
 - **Acceptance:**
