@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.avshy.bayitvoice.BuildConfig
 import com.avshy.bayitvoice.service.IdleVisibility
 import com.avshy.bayitvoice.service.SessionLauncher
 
@@ -54,6 +55,17 @@ class IdleActivity : ComponentActivity() {
     private fun applyLaunch(intent: Intent) {
         val auto = intent.getBooleanExtra(SessionLauncher.EXTRA_AUTO_STARTED, false)
         autoStarted = auto
+        if (BuildConfig.DEBUG) {
+            if (intent.getBooleanExtra("debug_landscape", false)) {
+                requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+            IdleDebug.set(
+                intent.getStringExtra("debug_condition"),
+                intent.getStringExtra("debug_sun"),
+                if (intent.hasExtra("debug_temp")) intent.getFloatExtra("debug_temp", 20f) else null,
+                intent.getStringExtra("debug_time"),
+            )
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setTurnScreenOn(auto)
         } else {

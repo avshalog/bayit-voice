@@ -25,7 +25,7 @@ class IdleClock(private val context: Context) {
 
     private val settings = AppSettings.get(context)
 
-    fun now(at: Date = Date()): IdleClockState {
+    fun now(at: Date = if (com.avshy.bayitvoice.BuildConfig.DEBUG) IdleDebug.at() else Date()): IdleClockState {
         val locale = Locale.getDefault()
         val time = android.text.format.DateFormat.getTimeFormat(context).format(at)
         val gregorian = java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL, locale).format(at)

@@ -66,7 +66,8 @@ import kotlinx.coroutines.delay
 fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
     val context = LocalContext.current
     val clock = remember { IdleClock(context) }
-    val state by produceState(clock.now()) {
+    val state by produceState(clock.now(), IdleDebug.time) {
+        value = clock.now()
         while (true) {
             // Wake just after the next minute starts.
             delay(60_000L - System.currentTimeMillis() % 60_000L + 50L)
@@ -77,7 +78,8 @@ fun IdleScreen(onNightChange: (Boolean) -> Unit = {}) {
 
     val weatherSource = remember { IdleWeather(context) }
     LaunchedEffect(Unit) { weatherSource.run() }
-    val weather by weatherSource.now.collectAsState(initial = null)
+    val realWeather by weatherSource.now.collectAsState(initial = null)
+    val weather = IdleDebug.weather ?: realWeather
     val music = remember { IdleMusic(context) }
     LaunchedEffect(Unit) { music.subscribe() }
     val playing by music.now.collectAsState(initial = null)
