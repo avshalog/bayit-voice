@@ -6,7 +6,7 @@ Bayit Voice listens for a wake word, streams your speech to Home Assistant's Ass
 
 It is a generic app: there are no built-in addresses, tokens, languages or device names. Everything comes from your own settings. The UI is in **English and Hebrew** (with full RTL support), and the speech language is whatever your Assist pipeline uses.
 
-> Status: version 0.1.0, a personal project made public. It works well on the devices it was built on (a Realme phone and a few others), but expect rough edges. Issues and pull requests are welcome.
+> Status: version 0.2.0, a personal project made public. It works well on the devices it was built on (a Realme phone and a few others), but expect rough edges. Issues and pull requests are welcome.
 
 [![Voice command, from wake word to reply](docs/media/poster-light.jpg)](docs/media/voice-light.mp4)
 
@@ -50,7 +50,7 @@ It is a generic app: there are no built-in addresses, tokens, languages or devic
 
 ## Install
 
-1. Download [`releases/bayit-voice-0.1.0.apk`](releases/bayit-voice-0.1.0.apk) to your Android device. It is also in the repository's **Releases** page when one is published.
+1. Download [`releases/bayit-voice-0.2.0.apk`](releases/bayit-voice-0.2.0.apk) to your Android device. It is also in the repository's **Releases** page when one is published.
 2. Open it. Android will ask you to allow installing apps from your browser or file manager. This is normal for an app that is not on Google Play.
 3. Open **Bayit Voice** and follow the [Quick start](#quick-start).
 
