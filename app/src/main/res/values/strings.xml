@@ -127,7 +127,7 @@
     <string name="notification_boot_text">Tap to start listening for the wake word.</string>
 
     <!-- Training guide -->
-    <string name="guide_notebook_url" translatable="false">https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb?usp=sharing</string>
+    <string name="guide_notebook_url" translatable="false">https://colab.research.google.com/github/avshalog/bayit-voice/blob/master/tools/wake_word_training/train_wake_word.ipynb</string>
     <string name="guide_title">Train your own wake word</string>
     <string name="guide_intro">You can create a wake word of your choice, in any language, with the free openWakeWord training notebook on Google Colab. It takes about an hour and needs no programming.</string>
     <string name="guide_step_1">Open the training notebook (button below) and sign in with a Google account.</string>

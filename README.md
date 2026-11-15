@@ -31,6 +31,7 @@ It is a generic app: there are no built-in addresses, tokens, languages or devic
 - [Build from source](#build-from-source)
 - [Project layout](#project-layout)
 - [Media](#media)
+- [Thanks and prior work](#thanks-and-prior-work)
 - [Licenses and credits](#licenses-and-credits)
 
 ---
@@ -223,6 +224,18 @@ The application id lives in one place, `gradle.properties` (`bayitvoice.applicat
 
 Live, animated design mock-ups are in [`docs/`](docs): [idle screen](docs/idle-screen-demo.html), [alarm and timer screens](docs/alert-screens-demo.html) and [orbs](docs/orbs-demo.html). Download the repository and open them in a browser.
 
+## Thanks and prior work
+
+Bayit Voice stands on the shoulders of other open-source projects. Thank you to their authors.
+
+- **[Ava](https://github.com/brownard/Ava)** by brownard (Apache 2.0): an Android voice assistant that speaks the ESPHome protocol. It showed that an Android phone can be a Home Assistant satellite, and we studied it as a reference for message order and Home Assistant quirks. The code in this repository was written separately.
+- **[openWakeWord](https://github.com/dscripka/openWakeWord)** by David Scripka: the wake-word models and the detection pipeline, and the base of our training notebook.
+- **[Piper sample generator](https://github.com/rhasspy/piper-sample-generator)** (Rhasspy / Open Home Foundation): the synthetic speech used to train wake words.
+- **[Linux Voice Assistant](https://github.com/OHF-Voice/linux-voice-assistant)** and **[Wyoming](https://github.com/OHF-Voice/wyoming)** (Open Home Foundation): the reference for how a modern Home Assistant satellite behaves, and the reason we chose the ESPHome protocol.
+- **[aioesphomeapi](https://github.com/esphome/aioesphomeapi)** and **[ESPHome](https://esphome.io)**: the native API definition (`api.proto`) that our satellite implements.
+- **[thinking-orbs](https://github.com/Jakubantalik/Libraries.dev)** by Jakub Antalik: the animated orb geometry.
+- **[Home Assistant](https://www.home-assistant.io)**, **[Music Assistant](https://music-assistant.io)** and the **[Noise Protocol Framework](https://noiseprotocol.org)**, which this app is built around or uses.
+
 ## Licenses and credits
 
 - **The built-in wake-word models** and the openWakeWord feature models (melspectrogram, embedding) are by David Scripka ([openWakeWord](https://github.com/dscripka/openWakeWord)) and are licensed under **CC BY-NC-SA 4.0**. They **may not be used commercially**. The *Hey Bayit* model is trained on the same openWakeWord data, so the same terms apply to it. The openWakeWord code is Apache 2.0.
@@ -231,4 +244,4 @@ Live, animated design mock-ups are in [`docs/`](docs): [idle screen](docs/idle-s
 - Libraries: LiteRT (TensorFlow Lite), OkHttp, AndroidX, Jetpack Compose, Kotlin coroutines (Apache 2.0) and BouncyCastle (MIT).
 - Home Assistant and ESPHome are trademarks of their owners. This project is not affiliated with them.
 
-The app's own source code does not yet carry a license file. Until one is added, the default copyright rules apply.
+**The app's own source code** is licensed under the [Apache License 2.0](LICENSE). The bundled wake-word models are not covered by it: they keep their own CC BY-NC-SA 4.0 terms (non-commercial), as described above. If you use the app commercially, remove or replace the bundled models and use models you are allowed to use that way.
