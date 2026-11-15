@@ -10,8 +10,15 @@
 .externalNativeBuild/
 .cxx/
 *.apk
+!/releases/*.apk
 *.keystore
 # Developer test values (never commit credentials)
 /secrets.properties
 # Personal voice recordings for wake-word training
 /recordings/
+# Personal notes, local tooling and raw captures (kept on the developer's machine only)
+/private/
+/.claude/
+/settings.local.json
+/docs/post-media/
+/keystore.properties

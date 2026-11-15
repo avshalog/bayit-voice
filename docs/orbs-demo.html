@@ -1,0 +1,438 @@
+<title>Bayit Voice Orbs</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&family=Heebo:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a phone showing the session sheet exactly as SessionSheet.kt lays it out (1 css px = 1 dp), controls beside it, then the phase mapping and the full orb gallery. Single dark look, the app's own SessionColors. */
+:root {
+  --page: #101115;
+  --scrim: rgba(8, 10, 12, 0.35);
+  --sheet: #1C1D22;
+  --raised: #2A2C33;
+  --handle: #45484F;
+  --line: #2E3038;
+  --text: #ECEDF0;
+  --reply: #F5F6F8;
+  --muted: #C9CCD3;
+  --soft: #9EA3AE;
+  --accent: #7FA6FF;
+  --on-accent: #0E1013;
+  --done: #5CCB8A;
+  --error: #FFB4AB;
+  --font-display: "Rubik", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Heebo", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--page); color: var(--text); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 2rem; line-height: 1.2; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: 1rem; font-weight: 500; }
+p { margin: 0; max-width: 62ch; }
+.muted { color: var(--soft); }
+.mono { font-family: var(--font-mono); font-size: 0.82rem; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08em; color: var(--accent); text-transform: uppercase; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 48px; align-items: center; }
+.intro { display: grid; gap: 18px; min-width: 0; }
+.controls { display: grid; gap: 14px; }
+.controls .label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--soft); }
+.seg { display: flex; flex-wrap: wrap; gap: 8px; }
+button.chip {
+  font: inherit; font-family: var(--font-display); font-size: 0.88rem;
+  color: var(--text); background: var(--raised);
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; cursor: pointer;
+}
+button.chip:hover { border-color: var(--handle); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+button.chip.primary { background: transparent; border-color: var(--accent); color: var(--accent); }
+.motion-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 14px; font-size: 0.9rem; }
+
+/* Phone: 360 x 760 css px, one css px per dp. */
+.phone {
+  width: 360px; max-width: 100%; height: 760px;
+  border-radius: 44px; border: 9px solid #050506;
+  background: linear-gradient(160deg, #3b4252 0%, #232a36 55%, #151820 100%);
+  position: relative; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+}
+.phone .wall { position: absolute; inset: 0; display: grid; place-content: start center; padding-top: 90px; text-align: center; color: rgba(255,255,255,0.75); }
+.phone .clock { font-family: var(--font-display); font-size: 3.6rem; font-weight: 300; line-height: 1; }
+.phone .scrim { position: absolute; inset: 0; background: var(--scrim); }
+
+/* SessionSheet: padding 20/8/20, spacing 12, fixed conversation height so nothing jumps. */
+.sheet {
+  position: absolute; inset: auto 0 0 0;
+  background: var(--sheet); border-radius: 28px 28px 0 0;
+  padding: 8px 20px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.handle { width: 36px; height: 4px; border-radius: 2px; background: var(--handle); align-self: center; }
+.status { display: flex; align-items: center; gap: 10px; height: 44px; }
+.status .icon { width: 28px; height: 28px; display: grid; place-items: center; flex: none; }
+.status .icon svg { width: 22px; height: 22px; }
+.status .icon svg.small { width: 20px; height: 20px; }
+.status .name { font-family: var(--font-body); font-size: 17px; line-height: 24px; font-weight: 600; color: var(--text); }
+.status .close {
+  margin-inline-start: auto; width: 44px; height: 44px; border-radius: 50%;
+  background: var(--raised); color: var(--muted); border: 0; display: grid; place-items: center; cursor: pointer;
+}
+.conv { position: relative; height: 150px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.conv .text { position: relative; display: flex; flex-direction: column; gap: 12px; }
+.user {
+  align-self: flex-start; margin-inline-start: 10px; max-width: 300px;
+  font-size: 16px; line-height: 22px; color: var(--text);
+  padding: 10px 16px; border-radius: 20px 20px 0 20px;
+  background: rgba(42, 44, 51, 0.5);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  position: relative;
+  transition: opacity 250ms, transform 250ms;
+}
+.user::after {
+  /* the curved tail at the start edge, same path as tailPath in SessionSheet.kt */
+  content: ""; position: absolute; bottom: 0; right: -13.5px; width: 14px; height: 18px;
+  background: rgba(42, 44, 51, 0.5);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 18'%3E%3Cpath d='M0.5 0 C0.5 8 4 14.5 13.5 17.6 C9 18.2 4 18 0.5 17.4 Z'/%3E%3C/svg%3E") no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 18'%3E%3Cpath d='M0.5 0 C0.5 8 4 14.5 13.5 17.6 C9 18.2 4 18 0.5 17.4 Z'/%3E%3C/svg%3E") no-repeat;
+}
+.reply { font-size: 18px; line-height: 26px; font-weight: 500; color: var(--reply); }
+.err { font-size: 15px; line-height: 22px; color: var(--error); }
+.empty { opacity: 0; transform: translateY(6px); }
+.slot { height: 64px; display: grid; place-items: center; position: relative; }
+.mic {
+  height: 48px; border-radius: 24px; border: 0; padding: 0 22px;
+  background: var(--accent); color: var(--on-accent);
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font-body); font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: opacity 250ms;
+}
+.mic svg { width: 20px; height: 20px; }
+canvas.orb { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); transition: opacity 300ms; pointer-events: none; }
+canvas.orb.off { opacity: 0; }
+
+/* Mapping and gallery */
+.section { display: grid; gap: 20px; }
+.map-wrap { overflow-x: auto; }
+.map { width: 100%; border-collapse: collapse; }
+.map th, .map td { text-align: start; padding: 14px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.map th { font-family: var(--font-mono); font-weight: 400; font-size: 0.75rem; color: var(--soft); letter-spacing: 0.06em; }
+.map td canvas { width: 48px; height: 48px; display: block; }
+.map td.phase { font-family: var(--font-display); font-weight: 500; white-space: nowrap; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.cell { background: var(--sheet); border: 1px solid var(--line); border-radius: 16px; padding: 18px 14px 14px; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.cell canvas { width: 64px; height: 64px; }
+.cell .name { font-family: var(--font-mono); font-size: 0.8rem; }
+.cell .desc { font-size: 0.8rem; color: var(--soft); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 28px; }
+.note { display: grid; gap: 8px; align-content: start; }
+.note p { font-size: 0.92rem; color: var(--soft); }
+.note p b { color: var(--text); font-weight: 500; }
+footer { color: var(--soft); font-size: 0.82rem; }
+footer a { color: var(--accent); }
+
+@media (max-width: 800px) {
+  .hero { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .intro { justify-self: stretch; }
+  h1 { font-size: 1.6rem; }
+}
+</style>
+
+<div class="wrap" dir="rtl" lang="he">
+
+  <section class="hero">
+    <div class="intro">
+      <div class="eyebrow">thinking-orbs · מסך השיחה</div>
+      <h1>הכדור במסך השיחה של בית</h1>
+      <p class="muted">המסך בנוי כמו SessionSheet באפליקציה: אותם מידות (פיקסל אחד כאן = dp אחד), שורת סטטוס, בועה, תשובה וכפתור המיקרופון. האייקונים בשורת הסטטוס הם האייקונים הקיימים, בלי תנועה. התנועה כולה עוברת לכדור. גובה החלון קבוע לאורך כל השיחה.</p>
+      <div class="controls">
+        <div class="label">שלב</div>
+        <div class="seg" role="group" aria-label="שלב בשיחה" id="phases"></div>
+        <div class="label">מיקום הכדור</div>
+        <div class="seg" role="group" aria-label="מיקום הכדור">
+          <button type="button" class="chip" id="pos-center" data-pos="center">במרכז, נעלם כשיש טקסט</button>
+          <button type="button" class="chip" id="pos-slot" data-pos="slot">למטה, במקום כפתור המיקרופון</button>
+        </div>
+        <div class="seg"><button type="button" class="chip primary" id="run">הרץ שיחה לדוגמה</button></div>
+        <div class="motion-note" id="motion-note" hidden>
+          <span>המערכת שלך מבקשת להפחית תנועה, ולכן הכדורים עצורים.</span>
+          <button type="button" class="chip" id="motion-on">הפעל אנימציה</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="phone" aria-label="מסך השיחה בטלפון">
+      <div class="wall"><div class="clock">21:47</div><div>חמישי, 5 בנובמבר</div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="handle"></div>
+        <div class="status">
+          <div class="icon" id="phase-icon"></div>
+          <div class="name" id="phase-name" aria-live="polite"></div>
+          <button class="close" type="button" aria-label="סגור">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+        <div class="conv">
+          <canvas class="orb" id="orb-center" aria-hidden="true"></canvas>
+          <div class="text">
+            <div class="user empty" id="user-text"></div>
+            <div class="reply empty" id="reply-text"></div>
+            <div class="err" id="err-text" hidden>אין חיבור לשרת. בדוק את הכתובת בהגדרות.</div>
+          </div>
+        </div>
+        <div class="slot">
+          <canvas class="orb" id="orb-slot" aria-hidden="true"></canvas>
+          <button class="mic" type="button" id="mic" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg>
+            <span id="mic-label">דבר</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>איזה כדור לכל שלב</h2>
+    <p class="muted">השלבים הם אלה שכבר קיימים ב-SessionPhase. בשלבים שבהם מופיע כפתור המיקרופון (מוכן, סיום, שגיאה) אין כדור.</p>
+    <div class="map-wrap">
+      <table class="map">
+        <thead><tr><th>שלב</th><th>כדור</th><th>STATE</th><th>למה</th></tr></thead>
+        <tbody>
+          <tr><td class="phase">מתחבר</td><td><canvas data-orb="connecting"></canvas></td><td class="mono">connecting</td><td>נקודות שמתחברות לרשת, כמו החיבור ל-HA.</td></tr>
+          <tr><td class="phase">מקשיב</td><td><canvas data-orb="listening"></canvas></td><td class="mono">listening</td><td>גל שעובר בטבעות, בזמן שאתה מדבר.</td></tr>
+          <tr><td class="phase">חושב</td><td><canvas data-orb="working"></canvas></td><td class="mono">working</td><td>חלקיקים במסלולים, בזמן ש-Claude מחליט ומפעיל דברים בבית.</td></tr>
+          <tr><td class="phase">בית (עונה)</td><td><canvas data-orb="composing" data-voice="1"></canvas></td><td class="mono">composing</td><td>סרט מתנועע שמהירותו לפי עוצמת הקול מ-SpeechLevel. מחליף את ה-waveform.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>כל תשעת הכדורים בספרייה</h2>
+    <div class="grid" id="gallery"></div>
+  </section>
+
+  <section class="section">
+    <h2>מה זה ידרוש באפליקציה</h2>
+    <div class="notes">
+      <div class="note">
+        <h3>העברת המנוע ל-Kotlin</h3>
+        <p>המנוע של הספרייה הוא מתמטיקה טהורה שמחזירה רשימת נקודות לכל רגע. נעביר רק את ארבעת המצבים שבטבלה לקובץ <span class="mono">OrbEngine.kt</span>, ונצייר אותם ב-<span class="mono">Canvas</span> של Compose.</p>
+      </div>
+      <div class="note">
+        <h3>שינויים במסך השיחה</h3>
+        <p>האייקונים ב-<span class="mono">PhaseIcon</span> נשארים בלי אנימציה. <b>הנקודות הקופצות אחרי "מקשיב" ו"חושב" יורדות</b>, כי הכדור כבר מראה שמשהו קורה. אזור השיחה מקבל <b>גובה קבוע</b> במקום 110 עד 260, כדי שהחלון לא ישנה גודל. ב-SPEC §5.1 צריך לעדכן את שורת הסטטוס ואת התחתית בהתאם.</p>
+      </div>
+      <div class="note">
+        <h3>ביצועים ורישיון</h3>
+        <p>הכדור רץ רק במסך השיחה, לא בשירות הרקע, אז SPEC §7 לא נפגע. הרישיון MIT, צריך להוסיף שורת קרדיט.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>מנוע: <a href="https://github.com/Jakubantalik/Libraries.dev" target="_blank" rel="noopener">thinking-orbs 0.3.2</a> של Jakub Antalik, רישיון MIT. הטקסטים בשיחה הם דוגמה.</footer>
+</div>
+
+<script type="module">
+import { MODE_FRAMES, resolvePreset, paintFrame } from "https://cdn.jsdelivr.net/npm/thinking-orbs@0.3.2/dist/engine.es.js";
+import { s as scaleCounts } from "https://cdn.jsdelivr.net/npm/thinking-orbs@0.3.2/dist/index-B8WsUNf5.js";
+
+let reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DPR = Math.min(2, devicePixelRatio || 1);
+const ACCENT = { r: 127, g: 166, b: 255 };
+const FADE_SEC = 0.35;
+const smooth = (x) => x * x * (3 - 2 * x);
+
+let speaking = false;
+function speechLevel(t) {
+  if (!speaking) return 0;
+  const syl = Math.max(0, Math.sin(t * 11)) * (0.55 + 0.45 * Math.sin(t * 2.3));
+  const pause = Math.sin(t * 0.9) > -0.6 ? 1 : 0.15;
+  return Math.min(1, syl * pause + 0.08);
+}
+
+/** One orb on one canvas, with a crossfade when its state changes. */
+class Orb {
+  constructor(canvas, state, { px, preset = 64, countMul = 1, speedMul = 1, voice = false }) {
+    Object.assign(this, { canvas, px, preset, countMul, speedMul, voice });
+    this.ctx = canvas.getContext("2d");
+    canvas.style.width = canvas.style.height = px + "px";
+    canvas.width = canvas.height = Math.round(px * DPR);
+    this.visible = true;
+    this.cur = this.layer(state); this.prev = null; this.fade = 1;
+  }
+  layer(state) {
+    const { mode, speed, opts } = resolvePreset(state, this.preset);
+    return { state, frameFn: MODE_FRAMES[mode], speed: speed * this.speedMul, t: 0,
+      opts: this.countMul !== 1 ? scaleCounts(opts, this.countMul) : opts };
+  }
+  set(state) {
+    if (!state) { this.show(false); return; }
+    if (!this.visible) {
+      // Reappearing: start straight in the new state; the canvas opacity does the fade.
+      this.cur = this.layer(state); this.prev = null; this.fade = 1;
+    } else if (state !== this.cur.state) {
+      this.prev = this.cur; this.cur = this.layer(state); this.fade = reduced ? 1 : 0;
+    }
+    this.show(true);
+  }
+  show(on) { this.visible = on; this.canvas.classList.toggle("off", !on); }
+  paintLayer(L, alpha, scale) {
+    const c = this.ctx, k = DPR * scale;
+    const off = (this.px * DPR * (1 - scale)) / 2;
+    c.globalAlpha = alpha;
+    c.setTransform(k, 0, 0, k, off, off);
+    paintFrame(c, L.frameFn(this.px, reduced ? 0.6 : L.t, L.opts), true, ACCENT);
+  }
+  draw(dt, now) {
+    const mul = this.voice && this.cur.state === "composing" ? 0.35 + 1.6 * speechLevel(now) : 1;
+    this.cur.t += dt * this.cur.speed * mul;
+    if (this.prev) this.prev.t += dt * this.prev.speed;
+    this.fade = Math.min(1, this.fade + dt / FADE_SEC);
+    if (this.fade >= 1) this.prev = null;
+    const c = this.ctx;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
+    c.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const e = smooth(this.fade);
+    if (this.prev) this.paintLayer(this.prev, 1 - e, 1 - 0.08 * e);
+    this.paintLayer(this.cur, e, 0.92 + 0.08 * e);
+  }
+}
+
+const orbs = [];
+const add = (o) => (orbs.push(o), o);
+const orbCenter = add(new Orb(document.getElementById("orb-center"), "listening", { px: 110, countMul: 1.4, speedMul: 0.85, voice: true }));
+const orbSlot = add(new Orb(document.getElementById("orb-slot"), "listening", { px: 64, voice: true }));
+
+document.querySelectorAll("canvas[data-orb]").forEach((c) =>
+  add(new Orb(c, c.dataset.orb, { px: 48, voice: c.dataset.voice === "1" })));
+
+const STATES = [
+  ["working", "חלקיקים במסלולים"], ["searching", "סריקה על גלובוס"], ["solving", "פסים שמסתדרים"],
+  ["listening", "גל בטבעות"], ["connecting", "רשת שמתחברת"], ["weaving", "שלושה חוטים"],
+  ["composing", "סרט מתנועע"], ["breathing", "טבעת נושמת"], ["shaping", "עיגול, משולש, ריבוע"],
+];
+const gallery = document.getElementById("gallery");
+for (const [state, desc] of STATES) {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  cell.innerHTML = `<canvas role="img" aria-label="${state}"></canvas><div class="name">${state}</div><div class="desc">${desc}</div>`;
+  gallery.append(cell);
+  add(new Orb(cell.querySelector("canvas"), state, { px: 64 }));
+}
+
+// The app's line icons (SessionIcons.kt), drawn still.
+const svg = (paths, color, cls = "", w = 2) =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${paths.map((d) => `<path d="${d}"/>`).join("")}</svg>`;
+const P = {
+  connecting: ["M5 12.5a10 10 0 0 1 14 0", "M8.5 16a5 5 0 0 1 7 0", "M2 9a14.5 14.5 0 0 1 20 0", "M12 19.5h.01"],
+  mic: ["M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z", "M5.5 11a6.5 6.5 0 0 0 13 0", "M12 17.5V21"],
+  thinking: ["M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z",
+    "M19 15.5c.25 1.6 1 2.35 2.5 2.5-1.5.15-2.25.9-2.5 2.5-.25-1.6-1-2.35-2.5-2.5 1.5-.15 2.25-.9 2.5-2.5z"],
+  home: ["M3.5 11 12 4l8.5 7", "M5.5 9.5V20h13V9.5", "M10 20v-5h4v5"],
+  check: ["M5 12.5l4.5 4.5L19 7.5"],
+  warning: ["M12 3.5 21.5 20h-19z", "M12 10v4.5", "M12 17.5h.01"],
+};
+const A = "var(--accent)";
+const PHASES = {
+  idle:       { label: "מוכן",       icon: svg(P.mic, A, "small", 2.2),    orb: null,         mic: "דבר" },
+  connecting: { label: "מתחבר",      icon: svg(P.connecting, A),           orb: "connecting" },
+  listening:  { label: "מקשיב",      icon: svg(P.mic, A, "small", 2.2),    orb: "listening" },
+  thinking:   { label: "חושב",       icon: svg(P.thinking, A),             orb: "working" },
+  speaking:   { label: "בית",        icon: svg(P.home, A),                 orb: "composing" },
+  done:       { label: "בית",        icon: svg(P.check, "var(--done)", "", 2.6), orb: null, mic: "דבר שוב" },
+  error:      { label: "משהו השתבש", icon: svg(P.warning, "var(--error)"), orb: null,         mic: "נסה שוב" },
+};
+
+const el = (id) => document.getElementById(id);
+const userEl = el("user-text"), replyEl = el("reply-text"), errEl = el("err-text");
+const mic = el("mic");
+let phase = "speaking", pos = "center";
+
+const phaseBar = el("phases");
+for (const [key, ph] of Object.entries(PHASES)) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.id = "ph-" + key; b.dataset.phase = key;
+  b.textContent = key === "done" ? "סיום" : key === "error" ? "שגיאה" : ph.label;
+  b.addEventListener("click", () => { stopScript(); setPhase(key); });
+  phaseBar.append(b);
+}
+
+function setText(node, text) {
+  node.textContent = text;
+  node.classList.toggle("empty", !text);
+}
+
+function render() {
+  const ph = PHASES[phase];
+  el("phase-name").textContent = ph.label;
+  el("phase-icon").innerHTML = ph.icon;
+  mic.hidden = !ph.mic;
+  if (ph.mic) el("mic-label").textContent = ph.mic;
+  errEl.hidden = phase !== "error";
+  speaking = phase === "speaking";
+  const hasText = !!(userEl.textContent || replyEl.textContent) || phase === "error";
+  orbCenter.set(pos === "center" && !hasText ? ph.orb : null);
+  orbSlot.set(pos === "slot" ? ph.orb : null);
+  document.querySelectorAll("#phases button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.phase === phase)));
+  document.querySelectorAll("button[data-pos]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.pos === pos)));
+  if (reduced) orbs.forEach((o) => o.draw(0, 0));
+}
+function setPhase(p) { phase = p; render(); }
+
+document.querySelectorAll("button[data-pos]").forEach((b) =>
+  b.addEventListener("click", () => { pos = b.dataset.pos; render(); }));
+
+const USER = "תדליק את האור בסלון ותגיד לי מה מזג האוויר מחר";
+const REPLY = "הדלקתי את האור בסלון. מחר צפוי להיות מעונן חלקית ונעים, עד עשרים וחמש מעלות.";
+let timers = [];
+function stopScript() { timers.forEach(clearTimeout); timers = []; }
+function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+function typeInto(node, text, start, perChar) {
+  [...text].forEach((_, i) => at(start + i * perChar, () => { setText(node, text.slice(0, i + 1)); render(); }));
+  return start + text.length * perChar;
+}
+function runScript() {
+  stopScript();
+  setText(userEl, ""); setText(replyEl, "");
+  setPhase("connecting");
+  at(1200, () => setPhase("listening"));
+  const heard = typeInto(userEl, USER, 2600, 55);
+  at(heard + 400, () => setPhase("thinking"));
+  at(heard + 3000, () => setPhase("speaking"));
+  const said = typeInto(replyEl, REPLY, heard + 3100, 45);
+  at(said + 1400, () => setPhase("done"));
+}
+el("run").addEventListener("click", runScript);
+
+const motionNote = el("motion-note");
+motionNote.hidden = !reduced;
+el("motion-on").addEventListener("click", () => {
+  reduced = false; motionNote.hidden = true; last = performance.now(); requestAnimationFrame(loop);
+});
+
+// Start mid-conversation with the orb visible: listening, before any text.
+setPhase("listening");
+
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(0.05, Math.max(0, now - last) / 1000);
+  last = now;
+  for (const o of orbs) if (o.visible || o.canvas.classList.contains("off")) o.draw(dt, now / 1000);
+}
+function loop(now) { tick(now); if (!reduced) requestAnimationFrame(loop); }
+tick(performance.now());
+requestAnimationFrame(loop);
+// Some embedding frames stall requestAnimationFrame; keep drawing from a timer then.
+setInterval(() => { const now = performance.now(); if (!reduced && now - last > 40) tick(now); }, 33);
+</script>

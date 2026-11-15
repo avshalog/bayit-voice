@@ -1,7 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Release signing comes from an untracked keystore.properties (see README); without it the release APK is unsigned.
+val keystoreProps = Properties()
+rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { keystoreProps.load(it) }
 
 android {
     namespace = "com.avshy.bayitvoice"
@@ -16,8 +22,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
         }
@@ -31,6 +49,11 @@ android {
     androidResources {
         // Wake-word models are memory-mapped straight from the APK.
         noCompress += "tflite"
+    }
+
+    lint {
+        // False positive: the app uses no Fragments, so there is no Fragment version to upgrade.
+        disable += "InvalidFragmentVersionForActivityResult"
     }
 
     buildFeatures {
